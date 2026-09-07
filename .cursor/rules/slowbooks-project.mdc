@@ -1,0 +1,9 @@
+---
+description: SlowBooks cross-platform operating model
+alwaysApply: true
+---
+
+Read and follow `AGENTS.md`, `docs/agent/START_HERE.md`, and
+`docs/agent/CURRENT_STATE.md` before changing the repository. Those files are
+the canonical instructions shared with Codex and Claude Code. Do not treat
+Cursor chat history as durable project state.
