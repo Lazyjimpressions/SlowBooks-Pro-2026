@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Last Updated:** September 7, 2026  
-**Status:** Phase 1 - Draft PR preparation  
+**Status:** Phase 1 complete - Draft PR review
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
@@ -31,7 +31,7 @@
 
 ---
 
-## Phase 1 — Retry-safe import balances 🟨
+## Phase 1 — Retry-safe import balances 🟩
 
 **Deliverables:**
 
@@ -41,11 +41,13 @@
 - [x] SimpleFIN inherits the same behavior
 - [x] Formatting and lint checks pass
 - [x] Targeted import tests pass (45 passed)
-- [ ] Linux CI confirms the full suite
+- [x] Linux CI confirms the full suite
 
 Local full-suite result: 1,901 passed, 8 skipped, and one unrelated macOS
 OCR-engine-selection failure. The failing test expects the no-Poppler path,
 while the installed native app makes an alternate macOS OCR path available.
+The draft PR's Linux test-and-coverage job passes, along with dependency audit,
+Gitleaks, and Docker build checks.
 
 **Files:**
 

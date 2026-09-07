@@ -32,7 +32,8 @@ cross-platform operating model. See
 Formatting and lint checks pass. The targeted CSV, OFX, and SimpleFIN suite
 passes (45 tests). The local full suite passes 1,901 tests with 8 skips and one
 environment-specific OCR failure; Linux CI remains the authoritative full-suite
-gate for the draft PR.
+gate for the draft PR. That Linux test-and-coverage gate, dependency audit,
+Gitleaks scan, and Docker build all pass on draft PR #2.
 
 ## Installed test app
 
