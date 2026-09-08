@@ -18,6 +18,8 @@
 - CSV supports Bank of America detail exports (including their summary
   preamble), Chase checking, Chase credit card, and two PayPal layouts.
 - OFX and SimpleFIN share the FITID-based import path.
+- Bank-feed rows can be posted atomically and idempotently to a counter-account;
+  equal-and-opposite rows can be paired as one balance-sheet transfer.
 - Import deduplication exists, but the v2.9.3 baseline does not move
   `BankAccount.balance` for imported rows.
 - Bank Rules attach category metadata but do not create journal entries.

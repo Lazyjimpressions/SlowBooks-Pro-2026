@@ -23,10 +23,13 @@ from app.schemas.banking import (
     BankAccountResponse,
     BankTransactionCreate,
     BankTransactionResponse,
+    BankTransactionPost,
+    BankTransferPost,
     ReconciliationCreate,
     ReconciliationResponse,
 )
 from app.services.closing_date import check_closing_date
+from app.services.bank_posting import post_bank_transaction, post_bank_transfer
 
 router = APIRouter(prefix="/api/banking", tags=["banking"])
 
@@ -101,6 +104,46 @@ def create_bank_transaction(data: BankTransactionCreate, db: Session = Depends(g
     db.commit()
     db.refresh(txn)
     return txn
+
+
+@router.post("/transactions/{transaction_id}/post")
+def post_transaction(
+    transaction_id: int,
+    data: BankTransactionPost,
+    db: Session = Depends(get_db),
+):
+    feed_row = db.get(BankTransaction, transaction_id)
+    if not feed_row:
+        raise HTTPException(status_code=404, detail="Bank transaction not found")
+    try:
+        return post_bank_transaction(
+            db,
+            feed_row,
+            data.counter_account_id,
+            class_id=data.class_id,
+            description=data.description,
+            reference=data.reference,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/transfers/post")
+def post_transfer(data: BankTransferPost, db: Session = Depends(get_db)):
+    first = db.get(BankTransaction, data.first_transaction_id)
+    second = db.get(BankTransaction, data.second_transaction_id)
+    if not first or not second:
+        raise HTTPException(status_code=404, detail="Bank transaction not found")
+    try:
+        return post_bank_transfer(
+            db,
+            first,
+            second,
+            description=data.description,
+            reference=data.reference,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 # Reconciliations

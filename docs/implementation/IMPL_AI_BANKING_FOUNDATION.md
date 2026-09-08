@@ -1,8 +1,8 @@
 # Implementation Plan: AI Banking Foundation
 
 **Version:** 1.0  
-**Last Updated:** September 7, 2026  
-**Status:** Phase 1 complete - Draft PR review
+**Last Updated:** September 8, 2026
+**Status:** Phase 2 in progress - atomic posting foundation
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
@@ -54,7 +54,10 @@ Gitleaks, and Docker build checks.
 - `app/services/bank_balance.py`
 - `app/services/bank_csv_import.py`
 - `app/services/ofx_import.py`
+- `app/services/bank_posting.py`
+- `app/routes/banking.py`
 - `tests/test_bank_csv_import.py`
+- `tests/test_bank_posting.py`
 - `tests/test_ofx_import.py`
 - `tests/test_simplefin.py`
 
@@ -65,9 +68,10 @@ Gitleaks, and Docker build checks.
 **Deliverables:**
 
 - [ ] Proposal and review records
-- [ ] Idempotent domain posting endpoint
-- [ ] Bank-row-to-journal linkage
-- [ ] Transfer matching and reversal workflow
+- [x] Idempotent domain posting endpoint
+- [x] Bank-row-to-journal linkage
+- [ ] Transfer matching and reversal workflow (exact reviewed pairs can post;
+  automated matching and reversal remain)
 
 ---
 

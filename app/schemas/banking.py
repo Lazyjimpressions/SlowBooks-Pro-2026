@@ -57,10 +57,26 @@ class BankTransactionResponse(BaseModel):
     description: Optional[str]
     check_number: Optional[str]
     category_account_id: Optional[int]
+    transaction_id: Optional[int]
+    match_status: Optional[str]
     reconciled: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class BankTransactionPost(StrictModel):
+    counter_account_id: int
+    class_id: Optional[int] = None
+    description: Optional[str] = None
+    reference: Optional[str] = None
+
+
+class BankTransferPost(StrictModel):
+    first_transaction_id: int
+    second_transaction_id: int
+    description: Optional[str] = None
+    reference: Optional[str] = None
 
 
 class ReconciliationCreate(StrictModel):

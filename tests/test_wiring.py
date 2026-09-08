@@ -301,6 +301,10 @@ _INTENTIONAL_BACKEND_ONLY: set[tuple[str, str]] = {
     ("POST", "/api/tax/mappings"),
     ("GET", "/api/tax/mappings"),
     ("POST", "/api/analytics/ai-query"),
+    # AI/bookkeeper posting controls. The SPA review queue arrives with the
+    # proposal workflow; these are intentionally API-first in Phase 2.
+    ("POST", "/api/banking/transactions/{transaction_id}/post"),
+    ("POST", "/api/banking/transfers/post"),
     # Drill-down analytics endpoints. SPA uses /api/analytics/dashboard
     # which returns the bundled response. The per-card endpoints stay
     # for future "refresh this card" UI + API consumers.
