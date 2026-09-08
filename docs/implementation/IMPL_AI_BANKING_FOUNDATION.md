@@ -9,6 +9,7 @@ Phase 3 classification is next
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
 - [Accounting invariants](../agent/ACCOUNTING_INVARIANTS.md)
 - [Roadmap](../agent/ROADMAP.md)
+- [Bank review classification](IMPL_BANK_REVIEW_CLASSIFICATION.md)
 
 ---
 
@@ -77,6 +78,9 @@ Gitleaks, and Docker build checks.
 ---
 
 ## Phase 3 — Contacts and AI policy 🔲
+
+Detailed execution is tracked in
+[`IMPL_BANK_REVIEW_CLASSIFICATION.md`](IMPL_BANK_REVIEW_CLASSIFICATION.md).
 
 **Deliverables:**
 

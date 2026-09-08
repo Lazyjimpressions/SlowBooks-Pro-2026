@@ -12,6 +12,7 @@
 - [Security and data](agent/SECURITY_AND_DATA.md)
 - [Roadmap](agent/ROADMAP.md)
 - [AI banking foundation implementation plan](implementation/IMPL_AI_BANKING_FOUNDATION.md)
+- [Bank review classification implementation plan](implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md)
 
 Product and deployment documentation remains linked from the repository
 root README and the existing files in this directory.
