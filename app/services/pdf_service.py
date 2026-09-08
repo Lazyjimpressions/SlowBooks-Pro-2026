@@ -125,6 +125,11 @@ def _render(template_name: str, company_settings: dict, **context) -> str:
     from app.services.terminology import terms_for
 
     template = _jinja_env.get_template(template_name)
+    # Every document carries the company logo when one is set (discussion
+    # #108: only the analytics PDF and the new-hire report ever received it).
+    context.setdefault(
+        "company_logo_data_uri", _company_logo_data_uri(company_settings)
+    )
     return template.render(
         company=company_settings, terms=terms_for(company_settings), **context
     )
@@ -144,8 +149,7 @@ def generate_invoice_pdf(invoice, company_settings: dict) -> bytes:
 
 
 def generate_estimate_pdf(estimate, company_settings: dict) -> bytes:
-    template = _jinja_env.get_template("estimate_pdf.html")
-    html_str = template.render(est=estimate, company=company_settings)
+    html_str = _render("estimate_pdf.html", company_settings, est=estimate)
     return render_pdf(html_str)
 
 
@@ -252,14 +256,11 @@ def generate_collection_letter_pdf(
 ) -> bytes:
     from datetime import date as _date
 
-    from app.services.terminology import terms_for
-
-    template = _jinja_env.get_template("collection_letter.html")
-    html_str = template.render(
+    html_str = _render(
+        "collection_letter.html",
+        company_settings,
         customer=customer,
         invoices=invoices,
-        company=company_settings,
-        terms=terms_for(company_settings),
         letter_type=letter_type,
         total_due=total_due,
         today=_date.today(),
@@ -303,6 +304,9 @@ def generate_giving_statement_pdf(
 
 
 def generate_check_pdf(check_data: dict, company_settings: dict) -> bytes:
+    """Checks print on pre-printed stock that already carries the bank's
+    and the company's marks, so this is the one document that deliberately
+    bypasses _render() and gets no logo."""
     template = _jinja_env.get_template("check_pdf.html")
     check_data["amount_words"] = _amount_to_words(check_data.get("amount", 0))
     html_str = template.render(check=check_data, company=company_settings)
@@ -318,10 +322,10 @@ def generate_report_pdf(sections: list, company_settings: dict) -> bytes:
     """
     from datetime import date
 
-    template = _jinja_env.get_template("report_pdf.html")
-    html_str = template.render(
+    html_str = _render(
+        "report_pdf.html",
+        company_settings,
         sections=sections,
-        company=company_settings,
         paper_size=(company_settings.get("pdf_paper_size") or "letter").lower(),
         generated_on=date.today().isoformat(),
     )

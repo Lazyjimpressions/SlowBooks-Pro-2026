@@ -7,6 +7,26 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.9.4 — The company logo on every document; exception text stays in the log
+
+**Every PDF now carries the company logo when one is set.** The logo
+helper fed only the analytics PDF and the new-hire report; invoices,
+estimates, statements, collection letters, donor acknowledgments, giving
+statements and the financial reports never received it, though the
+features list said they did (discussion #108). The render helper attaches
+it to every document and each header shows it. (The estimate and report
+templates now also receive the vocabulary dictionary the other documents had;
+nothing in them uses it yet.) Checks print on pre-printed stock and stay
+logo-free on purpose.
+
+**Exception text stays in the server log.** The QuickBooks Online import,
+export and OAuth callback, the IIF import and the QuickBooks report CSV
+importer answered failures with the exception's own words, which can carry
+paths and provider responses (CodeQL stack-trace exposure, five alerts).
+They now log the traceback and say only that the step failed; data problems
+in the CSV importer keep their wording. The donor acknowledgment preview's
+reason is a fixed phrase off a typed exception, as it always meant to be.
+
 ### v2.9.3 — SimpleFIN request pinned to the address the guard approved
 
 **One security fix, right behind 2.9.2.** The SimpleFIN SSRF guard resolved
