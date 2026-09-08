@@ -1,5 +1,5 @@
 # ============================================================================
-# CSV Bank Transaction Import — Chase checking, Chase credit card, PayPal
+# CSV Bank Transaction Import — Bank of America, Chase, and PayPal
 # Extends Feature 18 (bank feed import) to support CSV bank statement exports.
 #
 # Column mapping & pitfalls documented in the skill. Key rules:
@@ -19,7 +19,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.banking import BankTransaction
+from app.models.banking import BankAccount, BankTransaction
 from app.services.bank_balance import add_imported_amounts
 from app.services.bank_rules_engine import apply_bank_rules
 
@@ -54,6 +54,7 @@ PAYPAL_NEW_SIG = {
     "From Email Address",
     "Name",
 }
+BOFA_DETAIL_SIG = {"Date", "Description", "Amount", "Running Bal."}
 
 
 def detect_format(headers: set[str]) -> str:
@@ -66,6 +67,8 @@ def detect_format(headers: set[str]) -> str:
         return "paypal"
     if PAYPAL_NEW_SIG.issubset(headers):
         return "paypal_new"
+    if BOFA_DETAIL_SIG.issubset(headers):
+        return "bofa_detail"
     return "unknown"
 
 
@@ -278,6 +281,64 @@ def parse_paypal_new(reader: csv.DictReader) -> list[dict]:
     return transactions
 
 
+def _parse_bofa_amount(val: str) -> Decimal:
+    """Parse Bank of America amounts such as ``1,234.56`` or ``($25.00)``."""
+    normalized = val.strip().replace(",", "").replace("$", "")
+    if normalized.startswith("(") and normalized.endswith(")"):
+        normalized = f"-{normalized[1:-1]}"
+    return Decimal(normalized)
+
+
+def parse_bofa_detail(reader: csv.DictReader) -> list[dict]:
+    """Parse Bank of America's detailed checking/savings CSV export.
+
+    The export starts with a statement-summary block before the real header.
+    ``parse_csv`` positions the reader at that header. The beginning-balance
+    row has no Amount, so its Running Balance becomes a controlled register
+    opening row; the importer only accepts it into an empty, zero-balance
+    register.
+    """
+    transactions = []
+    for row in reader:
+        date_str = (row.get("Date") or "").strip()
+        description = (row.get("Description") or "").strip()
+        amount_str = (row.get("Amount") or "").strip()
+        running_balance_str = (row.get("Running Bal.") or "").strip()
+
+        if not date_str:
+            continue
+
+        is_opening_balance = (
+            not amount_str
+            and description.lower().startswith("beginning balance as of")
+            and bool(running_balance_str)
+        )
+        if not amount_str and not is_opening_balance:
+            continue
+
+        try:
+            txn_date = parse_date(date_str)
+            amount = _parse_bofa_amount(
+                running_balance_str if is_opening_balance else amount_str
+            )
+        except (ValueError, InvalidOperation) as e:
+            logger.warning("Skipping Bank of America row: %s", e)
+            continue
+
+        transactions.append(
+            {
+                "date": txn_date,
+                "amount": amount,
+                "payee": description,
+                "description": description,
+                "check_number": None,
+                "is_opening_balance": is_opening_balance,
+                "txn_type": "opening_balance" if is_opening_balance else None,
+            }
+        )
+    return transactions
+
+
 # ── Dispatch ─────────────────────────────────────────────────────────────
 
 
@@ -294,23 +355,40 @@ def parse_csv(csv_text: str) -> dict:
     if csv_text.startswith("\ufeff"):
         csv_text = csv_text[1:]
 
-    reader = csv.DictReader(io.StringIO(csv_text))
-    if not reader.fieldnames:
+    lines = csv_text.splitlines()
+    if not lines:
         return {
             "format": "unknown",
             "transactions": [],
             "error": "Empty CSV or no headers",
         }
 
-    # Normalize headers: strip whitespace, quotes, and BOM residue
-    headers = {h.strip().strip('"').strip("'") for h in reader.fieldnames if h}
-    fmt = detect_format(headers)
+    # Some exports (notably Bank of America detail CSVs) put a statement
+    # summary before the transaction table. Locate the first recognized
+    # header instead of assuming it is physical row 1.
+    reader = None
+    fmt = "unknown"
+    headers: set[str] = set()
+    for index, line in enumerate(lines):
+        candidate = next(csv.reader([line]), [])
+        candidate_headers = {h.strip().strip('"').strip("'") for h in candidate if h}
+        candidate_format = detect_format(candidate_headers)
+        if candidate_format != "unknown":
+            headers = candidate_headers
+            fmt = candidate_format
+            reader = csv.DictReader(io.StringIO("\n".join(lines[index:])))
+            break
+
+    if reader is None:
+        first_row = next(csv.reader([lines[0]]), [])
+        headers = {h.strip().strip('"').strip("'") for h in first_row if h}
 
     parsers = {
         "chase_checking": parse_chase_checking,
         "chase_credit": parse_chase_credit,
         "paypal": parse_paypal,
         "paypal_new": parse_paypal_new,
+        "bofa_detail": parse_bofa_detail,
     }
 
     parser = parsers.get(fmt)
@@ -333,6 +411,7 @@ _IMPORT_ID_PREFIX = {
     "chase_credit": "cc",
     "paypal": "pp",
     "paypal_new": "pp",
+    "bofa_detail": "bofa",
 }
 
 
@@ -381,6 +460,15 @@ def import_csv_transactions(
 
     transactions = result["transactions"]
     assign_import_ids(result["format"], transactions)
+    bank_account = (
+        db.query(BankAccount).filter(BankAccount.id == bank_account_id).first()
+    )
+    register_has_transactions = (
+        db.query(BankTransaction.id)
+        .filter(BankTransaction.bank_account_id == bank_account_id)
+        .first()
+        is not None
+    )
     imported = 0
     skipped = 0
     imported_amounts = []
@@ -395,6 +483,16 @@ def import_csv_transactions(
             .first()
         )
         if existing:
+            skipped += 1
+            continue
+
+        if txn.get("is_opening_balance") and (
+            register_has_transactions
+            or not bank_account
+            or Decimal(bank_account.balance or 0) != Decimal("0")
+        ):
+            # A statement opening balance is not income and must not be added
+            # on top of a register that already has its own opening/history.
             skipped += 1
             continue
 

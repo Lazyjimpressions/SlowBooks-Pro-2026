@@ -43,6 +43,20 @@ PAYPAL_NEW_CSV = (
     "grace@example.com,Grace Hopper,,,0.00,0.00,INV-9,\n"
 )
 
+BOFA_DETAIL_CSV = (
+    "Description,,Summary Amt.\n"
+    'Beginning balance as of 01/01/2026,,"1,000.00"\n'
+    'Total credits,,"14.90"\n'
+    'Total debits,,"-250.00"\n'
+    'Ending balance as of 01/31/2026,,"764.90"\n'
+    "\n"
+    "Date,Description,Amount,Running Bal.\n"
+    '01/01/2026,Beginning balance as of 01/01/2026,,"1,000.00"\n'
+    '01/20/2026,Interest Earned,4.90,"1,004.90"\n'
+    "01/22/2026,Online Banking transfer to CHK 1234,-250.00,754.90\n"
+    "01/25/2026,BKOFAMERICA MOBILE DEPOSIT,10.00,764.90\n"
+)
+
 
 def _mk_bank_account(db_session):
     ba = BankAccount(name="Test Checking", bank_name="Chase")
@@ -75,6 +89,10 @@ def test_detect_formats():
         == "chase_credit"
     )
     assert detect_format({"Date", "Time", "Name", "Type", "Status"}) == "paypal"
+    assert (
+        detect_format({"Date", "Description", "Amount", "Running Bal."})
+        == "bofa_detail"
+    )
     assert detect_format({"Nothing", "Useful"}) == "unknown"
 
 
@@ -106,6 +124,18 @@ def test_parse_paypal_new_format():
     assert len(txns) == 1
     assert txns[0]["amount"] == Decimal("250.00")
     assert txns[0]["payee"] == "Grace Hopper"
+
+
+def test_parse_bofa_detail_after_summary_preamble():
+    result = parse_csv(BOFA_DETAIL_CSV)
+    assert result["format"] == "bofa_detail"
+    assert result["error"] is None
+    txns = result["transactions"]
+    assert len(txns) == 4
+    assert txns[0]["amount"] == Decimal("1000.00")
+    assert txns[0]["is_opening_balance"] is True
+    assert txns[1]["amount"] == Decimal("4.90")
+    assert txns[-1]["amount"] == Decimal("10.00")
 
 
 # ── Import + dedup ───────────────────────────────────────────────────────
@@ -178,6 +208,35 @@ def test_paypal_fee_surfaces_in_description(db_session):
         .one()
     )
     assert "fee -3.20" in txn.description
+
+
+def test_bofa_opening_balance_makes_empty_register_tie_and_reimport_is_noop(
+    db_session,
+):
+    ba = _mk_bank_account(db_session)
+    first = import_csv_transactions(db_session, ba.id, BOFA_DETAIL_CSV)
+    assert first["format"] == "bofa_detail"
+    assert first["imported"] == 4
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("764.90")
+
+    second = import_csv_transactions(db_session, ba.id, BOFA_DETAIL_CSV)
+    assert second["imported"] == 0
+    assert second["skipped"] == 4
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("764.90")
+
+
+def test_bofa_opening_balance_does_not_stack_on_existing_register(db_session):
+    ba = _mk_bank_account(db_session)
+    ba.balance = Decimal("1000.00")
+    db_session.commit()
+
+    result = import_csv_transactions(db_session, ba.id, BOFA_DETAIL_CSV)
+    assert result["imported"] == 3
+    assert result["skipped"] == 1
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("764.90")
 
 
 # ── Bank-rule parity with OFX ────────────────────────────────────────────
