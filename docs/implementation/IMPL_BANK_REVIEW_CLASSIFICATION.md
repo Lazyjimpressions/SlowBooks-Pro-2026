@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.0
+**Version:** 1.1
 **Last Updated:** September 8, 2026
-**Status:** Phase 0 - Planning
+**Status:** Phase 1 - Proposal persistence and read API
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -10,6 +10,7 @@
 - [Accounting invariants](../agent/ACCOUNTING_INVARIANTS.md)
 - [AI-first banking roadmap](../agent/ROADMAP.md)
 - [ADR 0002: Import, propose, approve, post](../agent/decisions/0002-import-propose-approve-post.md)
+- [ADR 0003: Bank review classification](../agent/decisions/0003-bank-review-classification.md)
 
 ---
 
@@ -70,6 +71,9 @@ parent banking roadmap.
 - The built-in AI tools are read-only and do not propose or post bank work.
 - Existing AR/AP routes already validate invoice and bill allocations. They are
   authoritative for future payment-application work.
+- Phase 0 selected a versioned proposal model, an additive
+  `TransactionCounterparty` relationship, explicit class/contact resolution,
+  and a guarded intent-to-posting matrix. See ADR 0003.
 
 ---
 
@@ -93,25 +97,25 @@ parent banking roadmap.
 
 ---
 
-## Phase 0 — Contract and accounting design 🔲
+## Phase 0 — Contract and accounting design 🟩
 
 **Deliverables:**
 
-- [ ] Inventory current bank, class, customer, vendor, Expense, Payment, Bill
+- [x] Inventory current bank, class, customer, vendor, Expense, Payment, Bill
   Payment, Deposit, Transfer, and journal contracts.
-- [ ] Define the initial transaction-intent vocabulary: direct expense, direct
+- [x] Define the initial transaction-intent vocabulary: direct expense, direct
   income, customer payment candidate, bill payment candidate, transfer, owner
   activity, loan, investment, reimbursement, and unknown.
-- [ ] Define class resolution states: `unresolved`, `personal_no_class`, and
+- [x] Define class resolution states: `unresolved`, `personal_no_class`, and
   `assigned`; require `class_id` only for `assigned`.
-- [ ] Decide whether durable ledger counterparty links belong on the journal
+- [x] Decide whether durable ledger counterparty links belong on the journal
   header, journal lines, or a relationship table. Record an ADR if this changes
   the generic ledger model.
-- [ ] Define proposal lifecycle and audit fields, including supersession or
+- [x] Define proposal lifecycle and audit fields, including supersession or
   correction behavior.
-- [ ] Define which intent types may use direct posting and which must dispatch
+- [x] Define which intent types may use direct posting and which must dispatch
   to, or wait for, a domain workflow.
-- [ ] Create only synthetic test fixtures; do not copy live company data into
+- [x] Define a synthetic fixture matrix without copying live company data into
   the repository.
 
 **Exit criteria:**
@@ -126,6 +130,9 @@ parent banking roadmap.
 - `docs/agent/decisions/0003-bank-review-classification.md`
 - `app/models/banking.py`
 - `app/schemas/banking.py`
+
+**Completed:** September 8, 2026 in ADR 0003. No runtime or database behavior
+changed during this phase.
 
 ---
 
