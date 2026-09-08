@@ -15,7 +15,8 @@
 ## Banking observations
 
 - v2.9.3 allows new bank registers to link to asset or liability COA accounts.
-- CSV supports Chase checking, Chase credit card, and two PayPal layouts.
+- CSV supports Bank of America detail exports (including their summary
+  preamble), Chase checking, Chase credit card, and two PayPal layouts.
 - OFX and SimpleFIN share the FITID-based import path.
 - Import deduplication exists, but the v2.9.3 baseline does not move
   `BankAccount.balance` for imported rows.

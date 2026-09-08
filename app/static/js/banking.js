@@ -362,12 +362,12 @@ const BankingPage = {
         } catch (err) { toast(err.message, 'error'); }
     },
 
-    // Feature 18: OFX/QFX Import (+ CSV: Chase checking/credit, PayPal)
+    // Feature 18: OFX/QFX Import (+ CSV: Bank of America, Chase, PayPal)
     async showOFXImport(bankAccountId) {
         openModal('Import Bank File', `
             <form onsubmit="BankingPage.previewOFX(event, ${bankAccountId})">
                 <div class="form-group">
-                    <label>Select an OFX/QFX file, or a CSV export (Chase checking, Chase credit, PayPal)</label>
+                    <label>Select an OFX/QFX file, or a CSV export (Bank of America detail, Chase checking/credit, PayPal)</label>
                     <input type="file" name="file" accept=".ofx,.qfx,.csv" required id="ofx-file">
                 </div>
                 <div class="form-actions">

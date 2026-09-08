@@ -54,7 +54,7 @@ Tax calculations are approximate — verify with a tax professional. Full module
 - **Credit Card Charges** — Enter credit card charges as expenses (DR Expense, CR Credit Card Payable). Dedicated charge entry form with vendor, amount, and expense category
 - **Check Printing** — Generate check PDFs in standard 3-per-page format (stub/stub/check) with payee, amount in words, memo, and signature line
 - **Bank Reconciliation** — Full workflow: enter statement balance, toggle cleared items, validate difference = $0, complete
-- **OFX/QFX Import** — Import bank transactions from OFX/QFX files with FITID dedup, preview before import, auto-match by amount/date
+- **OFX/QFX and bank CSV import** — Import OFX/QFX plus Bank of America detail, Chase checking/credit, and PayPal CSV exports with retry-safe dedup, preview before import, and auto-match by amount/date
 
 ## Reports & Tax
 - **QuickBooks-style period selector** — All reports support preset periods (This Month, This Quarter, This/Last Year, Year to Date, Custom Date) with live refresh
@@ -637,4 +637,3 @@ All read endpoints accept `?period=month|quarter|year` (or `mtd/qtd/ytd`), or ex
 - Accessibility: WCAG 2.1 AA posture ("strive to conform") — header scopes,
   labelled icon buttons, live-region toasts, dialog focus management, AA
   contrast, and tagged (PDF/UA-1) PDFs. See docs/accessibility.md.
-
