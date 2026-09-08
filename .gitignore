@@ -2,13 +2,26 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+.env.*
+!.env.example
+!.env.*.example
 *.egg-info/
 dist/
 build/
 *.db
 *.sqlite3
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3-*
+*.dump
+*.backup
 .idea/
 .vscode/
+.codex/
+.claude/settings.local.json
+AGENTS.local.md
+CLAUDE.local.md
 *.swp
 *.swo
 *~
@@ -29,6 +42,28 @@ htmlcov/
 
 # User-uploaded attachments / logos — runtime data, not source
 app/static/uploads/
+
+# Private company and financial data. Sanitized fixtures belong only under
+# tests/fixtures and must use invented identities and values.
+private-data/
+local-data/
+companies/
+imports/
+exports/
+reports/
+*.ofx
+*.qfx
+*.qbo
+*.iif
+*.log
+
+# Signing material and credential exports
+*.pem
+*.p12
+*.pfx
+*.mobileprovision
+credentials*.json
+secrets*.json
 
 # pg_dump output — the backups/ dir itself stays tracked (via .gitkeep)
 # so the backup feature has somewhere to drop files on a fresh install,

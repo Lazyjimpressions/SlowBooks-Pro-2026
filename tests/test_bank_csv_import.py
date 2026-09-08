@@ -128,11 +128,17 @@ def test_same_day_same_amount_duplicates_both_import(db_session):
 
 def test_reimport_same_file_skips_everything(db_session):
     ba = _mk_bank_account(db_session)
+    ba.balance = Decimal("100.00")
+    db_session.commit()
     first = import_csv_transactions(db_session, ba.id, CHASE_CHECKING_CSV)
     assert first["imported"] == 4
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("2466.00")
     second = import_csv_transactions(db_session, ba.id, CHASE_CHECKING_CSV)
     assert second["imported"] == 0
     assert second["skipped"] == 4
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("2466.00")
 
 
 def test_overlapping_export_skips_only_known_rows(db_session):
@@ -147,6 +153,8 @@ def test_overlapping_export_skips_only_known_rows(db_session):
     result = import_csv_transactions(db_session, ba.id, overlapping)
     assert result["imported"] == 1
     assert result["skipped"] == 4
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("2303.90")
 
 
 def test_import_source_tagged_with_format(db_session):

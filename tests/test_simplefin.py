@@ -265,6 +265,7 @@ def test_sync_route_requires_connection_and_mapping(authed_client, db_session):
 
 def test_sync_route_end_to_end(authed_client, db_session, monkeypatch):
     ba = _mk_bank_account(db_session, name="Synced Checking")
+    ba.balance = Decimal("10.00")
     set_setting(db_session, "simplefin_access_url", ACCESS_URL)
     set_setting(db_session, "simplefin_account_map", json.dumps({"ACT-1": ba.id}))
     db_session.commit()
@@ -274,6 +275,17 @@ def test_sync_route_end_to_end(authed_client, db_session, monkeypatch):
     assert r.status_code == 200
     assert r.json()["imported"] == 2
     assert get_setting_raw(db_session, "simplefin_last_sync")
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("2454.50")
+
+    # The overlap window intentionally fetches known rows again. Dedup must
+    # keep both the register and its displayed balance unchanged.
+    r = authed_client.post("/api/simplefin/sync")
+    assert r.status_code == 200
+    assert r.json()["imported"] == 0
+    assert r.json()["skipped"] == 2
+    db_session.refresh(ba)
+    assert ba.balance == Decimal("2454.50")
 
     status = authed_client.get("/api/simplefin/status").json()
     assert status["connected"] is True

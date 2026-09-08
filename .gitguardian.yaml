@@ -1,7 +1,6 @@
 # GitGuardian/ggshield configuration.
-# tests/ contains deliberately fake credentials (fixture passwords like
-# "test-password-123") — secrets in tests are test data, not leaks.
+# Keep exclusions narrow. A blanket tests/** exclusion can hide a real token
+# accidentally pasted into a fixture.
 version: 2
 secret:
-  ignored_paths:
-    - "tests/**"
+  ignored_paths: []

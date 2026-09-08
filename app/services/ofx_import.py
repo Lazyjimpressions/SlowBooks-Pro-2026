@@ -9,6 +9,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models.banking import BankTransaction
+from app.services.bank_balance import add_imported_amounts
 from app.services.bank_rules_engine import apply_bank_rules
 
 
@@ -91,6 +92,7 @@ def import_transactions(
     """
     imported = 0
     skipped = 0
+    imported_amounts = []
 
     for txn in transactions:
         fitid = txn.get("fitid", "")
@@ -121,7 +123,9 @@ def import_transactions(
         )
         db.add(bt)
         imported += 1
+        imported_amounts.append(txn["amount"])
 
+    add_imported_amounts(db, bank_account_id, imported_amounts)
     db.commit()
 
     # Auto-apply bank rules to newly imported transactions
