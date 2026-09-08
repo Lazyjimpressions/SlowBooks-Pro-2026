@@ -18,6 +18,8 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     CheckConstraint,
+    Index,
+    text,
     func,
 )
 from sqlalchemy.orm import relationship
@@ -27,6 +29,16 @@ from app.database import Base
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    __table_args__ = (
+        Index(
+            "uq_transactions_bank_source",
+            "source_type",
+            "source_id",
+            unique=True,
+            sqlite_where=text("source_type IN ('bank_feed', 'bank_transfer')"),
+            postgresql_where=text("source_type IN ('bank_feed', 'bank_transfer')"),
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date, nullable=False, index=True)

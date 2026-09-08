@@ -55,6 +55,7 @@ Tax calculations are approximate — verify with a tax professional. Full module
 - **Check Printing** — Generate check PDFs in standard 3-per-page format (stub/stub/check) with payee, amount in words, memo, and signature line
 - **Bank Reconciliation** — Full workflow: enter statement balance, toggle cleared items, validate difference = $0, complete
 - **OFX/QFX and bank CSV import** — Import OFX/QFX plus Bank of America detail, Chase checking/credit, and PayPal CSV exports with retry-safe dedup, preview before import, and auto-match by amount/date
+- **Bank-feed posting** — Post reviewed feed rows atomically to the ledger, or pair opposite rows as a single balance-sheet transfer; repeated requests cannot duplicate the posting
 
 ## Reports & Tax
 - **QuickBooks-style period selector** — All reports support preset periods (This Month, This Quarter, This/Last Year, Year to Date, Custom Date) with live refresh
@@ -538,6 +539,8 @@ All payroll, HR, tax-form, and self-service portal endpoints are documented with
 | `/api/csv/import/{type}` | POST | Import CSV file |
 | `/api/bank-import/preview` | POST | Preview OFX/QFX transactions |
 | `/api/bank-import/import/{id}` | POST | Import OFX/QFX into bank account |
+| `/api/banking/transactions/{id}/post` | POST | Atomically post one reviewed feed row to a counter-account |
+| `/api/banking/transfers/post` | POST | Pair two opposite feed rows as one balance-sheet transfer |
 
 ### QuickBooks Online
 | Endpoint | Methods | Description |
