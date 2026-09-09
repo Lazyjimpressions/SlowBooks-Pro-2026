@@ -73,6 +73,10 @@ DEFAULT_SETTINGS = {
     "chart_setup_ready_at": "",
     # Multi-currency: ISO code the general ledger is kept in
     "home_currency": "USD",
+    # Business class tracking: blank keeps the technical Uncategorized
+    # fallback. A configured id is visibly proposed on classifiable activity;
+    # it is never injected invisibly by the journal service.
+    "default_class_id": "",
     # Stripe Online Payments
     "stripe_enabled": "false",
     "stripe_publishable_key": "",

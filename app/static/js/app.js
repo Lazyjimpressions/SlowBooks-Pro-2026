@@ -19,6 +19,14 @@ const App = {
         '/estimates':     { page: 'estimates',       label: 'Create Estimates',   render: () => EstimatesPage.render() },
         '/payments':      { page: 'payments',        label: 'Receive Payments',   render: () => PaymentsPage.render() },
         '/banking':       { page: 'banking',         label: 'Bank Accounts',      render: () => BankingPage.render() },
+        '/bank-review':   { page: 'banking',         label: 'Bank Review',        render: () => {
+            setTimeout(() => BankingPage.renderReviewQueue(), 0);
+            return '<div class="empty-state"><p>Loading imported transactions…</p></div>';
+        } },
+        '/bank-review/:id': { page: 'banking',       label: 'Bank Review',        render: (id) => {
+            setTimeout(() => BankingPage.showReview(Number(id)), 0);
+            return '<div class="empty-state"><p>Loading review details…</p></div>';
+        } },
         '/accounts':      { page: 'accounts',        label: 'Chart of Accounts',  render: () => App.renderAccounts() },
         '/reports':       { page: 'reports',         label: 'Report Center',      render: () => ReportsPage.render() },
         '/settings':      { page: 'settings',        label: 'Company Settings',   render: () => SettingsPage.render() },

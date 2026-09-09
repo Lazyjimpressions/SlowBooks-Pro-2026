@@ -131,7 +131,8 @@ class BankTransactionProposal(Base):
         ),
         CheckConstraint(
             "(class_resolution = 'assigned' AND class_id IS NOT NULL) OR "
-            "(class_resolution IN ('unresolved', 'personal_no_class') "
+            "(class_resolution IN ('unresolved', 'personal_no_class', "
+            "'not_applicable') "
             "AND class_id IS NULL)",
             name="ck_bank_proposal_class_resolution",
         ),
@@ -185,6 +186,7 @@ class BankTransactionProposal(Base):
     confidence = Column(Numeric(5, 4), nullable=True)
     confidence_components = Column(JSON, nullable=True)
     rationale = Column(Text, nullable=True)
+    review_note = Column(Text, nullable=True)
     normalizer_version = Column(String(50), nullable=True)
     supersedes_id = Column(
         Integer, ForeignKey("bank_transaction_proposals.id"), nullable=True

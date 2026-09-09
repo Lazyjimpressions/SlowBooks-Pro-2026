@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.settings import DEFAULT_SETTINGS
+from app.models.classes import TxnClass
 from app.services.settings_service import get_all_settings, set_setting
 
 # Aliases used by upstream Phase 9/10 routes that import from this module
@@ -156,6 +157,27 @@ def update_settings(
         {k: v for k, v in data.model_dump().items() if k in DEFAULT_SETTINGS},
     )
     incoming = data.model_dump()
+    if "default_class_id" in incoming and incoming["default_class_id"] not in (
+        None,
+        "",
+    ):
+        try:
+            default_class_id = int(incoming["default_class_id"])
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=422, detail="default_class_id must be an integer"
+            )
+        txn_class = db.get(TxnClass, default_class_id)
+        if txn_class is None or txn_class.is_archived:
+            raise HTTPException(
+                status_code=422,
+                detail="default_class_id must reference an active class",
+            )
+        if txn_class.is_system_default:
+            raise HTTPException(
+                status_code=422,
+                detail="Uncategorized is the missing-data fallback, not an operating default",
+            )
     if incoming.get("company_name"):
         from app.services.company_service import (
             _current_company_file,

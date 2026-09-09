@@ -64,19 +64,24 @@ creates a new revision and supersedes the old one. The global audit log records
 every insert and status transition; actor snapshot fields make the decision
 readable without reconstructing audit JSON.
 
-### 2. Keep personal distinct from unresolved
+### 2. Keep personal, not-applicable, and unresolved distinct
 
-`class_resolution` has three initial values:
+`class_resolution` has four values:
 
 - `unresolved`: no decision has been approved;
-- `personal_no_class`: explicitly reviewed as personal and posted with
-  `class_id = NULL`;
+- `personal_no_class`: explicitly reviewed under the legacy null-class policy
+  and posted with `class_id = NULL`;
 - `assigned`: business or other classed activity and a valid `class_id` is
-  required.
+  required;
+- `not_applicable`: pure balance-sheet activity such as a transfer, where no
+  profit-and-loss class applies.
 
-For the initial test company, `Sch C - Lazyj` is the only business class. The
-system `Uncategorized` reporting bucket remains a report fallback; it is not
-used as proof that an unreviewed transaction is personal.
+For the initial test company, `Personal` is the configurable company default
+and `Sch C - Lazyj` is the first business class. The default is visibly
+proposed in entry and bank-review interfaces; it is not injected silently by a
+posting service. The system `Uncategorized` reporting bucket remains a report
+fallback and cannot be selected as the company default. It is not proof that
+an unreviewed transaction is personal.
 
 ### 3. Represent counterparty resolution explicitly
 

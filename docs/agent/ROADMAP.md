@@ -17,8 +17,9 @@
 
 - Make bank review classify each row by transaction intent, counter-account,
   contact role, contact, and class before posting.
-- Treat an approved null class as personal/no-class activity; keep an unresolved
-  proposal distinct so missing classification is never mistaken for personal.
+- Let a company configure a visible default class such as Personal, keep the
+  system Uncategorized bucket as a control fallback, and use not-applicable for
+  pure balance-sheet activity. Missing classification remains unresolved.
 - Suggest existing vendor/customer matches.
 - Require review before creating contacts.
 - Apply vendor/customer, class, and counter-account links in Bank Rules.
