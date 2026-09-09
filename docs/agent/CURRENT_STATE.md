@@ -36,13 +36,13 @@
 ## Active work
 
 `feat/bank-rules-reviewed-learning` implements Phase 5 of
-`docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md`, stacked on draft PR
-#14. Phase 6 will merge, package, back up the test company, and validate these
-banking phases in one controlled macOS build.
+`docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md` on the Phase 4 baseline
+merged by PR #14. Phase 6 will merge, package, back up the test company, and
+validate these banking phases in one controlled macOS build.
 
 ## Verification status
 
-- Draft PR #14 passes Linux pytest, lint, Docker build, and secret scanning.
+- Merged PR #14 passed Linux pytest, lint, Docker build, and secret scanning.
 - Its dependency-audit job fails on the unchanged upstream
   `weasyprint==69.0` pin; the published remediation is 70.0. Resolve and test
   that dependency separately before Phase 6 claims an all-green gate.
