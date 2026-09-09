@@ -7,6 +7,10 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+**PDF dependency security update.** WeasyPrint is updated from 69.0 to 70.0
+to resolve CVE-2026-55073. PDF rendering retains its data-URI-only resource
+policy through WeasyPrint 70's `URLFetcher` API.
+
 ### v2.9.4 — The company logo on every document; exception text stays in the log
 
 **Every PDF now carries the company logo when one is set.** The logo

@@ -16,7 +16,7 @@ internal hardening notes see
 | Database | PostgreSQL 17 / SQLite + SQLAlchemy 2.0 |
 | Migrations | Alembic |
 | Frontend | Vanilla HTML/CSS/JS (no framework) + self-hosted Chart.js 4.4.6 for analytics |
-| PDF | WeasyPrint 60.2 + Jinja2 |
+| PDF | WeasyPrint 70.0 + Jinja2 |
 | Bank Import | ofxparse (OFX/QFX) |
 | Payments | Stripe Checkout (hosted) |
 | QBO Sync | python-quickbooks + intuit-oauth (OAuth 2.0) |
