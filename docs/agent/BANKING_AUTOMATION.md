@@ -45,6 +45,22 @@ Rules are durable deterministic memory, not a substitute for first-time
 reasoning. AI handles unseen or ambiguous rows. An approved AI mapping may
 offer to create a narrowly scoped rule for future occurrences.
 
+Deterministic suggestions use this precedence:
+
+1. unique equal-and-opposite rows in another linked register;
+2. reviewed exact aliases, scoped aliases before global aliases;
+3. prior approved or posted proposals with the same normalized key and
+   direction;
+4. existing Bank Rules;
+5. one exact normalized customer or vendor name;
+6. open invoice or bill amount/date/reference candidates.
+
+`bank-text-v1` stores normalized matching keys and inspectable confidence
+components separately from source text. `POST
+/api/banking/transactions/{id}/suggest` creates a proposal only. Reviewed
+aliases are managed through `/api/banking/counterparty-aliases`; deactivation
+retains their audit history and permits a corrected replacement.
+
 ## Classification contract
 
 Before a bank row can post, its approved proposal should identify:

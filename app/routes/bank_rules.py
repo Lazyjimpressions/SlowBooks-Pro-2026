@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.bank_rules import BankRule
 from app.models.banking import BankTransaction
 from app.schemas.bank_rules import BankRuleCreate, BankRuleUpdate, BankRuleResponse
+from app.services.bank_rules_engine import rule_matches
 
 router = APIRouter(prefix="/api/bank-rules", tags=["bank-rules"])
 
@@ -75,18 +76,8 @@ def apply_rules(db: Session = Depends(get_db)):
 
     matched = 0
     for txn in unmatched:
-        payee = (txn.payee or "").lower()
         for rule in rules:
-            pattern = rule.pattern.lower()
-            hit = False
-            if rule.rule_type == "contains" and pattern in payee:
-                hit = True
-            elif rule.rule_type == "starts_with" and payee.startswith(pattern):
-                hit = True
-            elif rule.rule_type == "exact" and payee == pattern:
-                hit = True
-
-            if hit:
+            if rule_matches(rule, txn.payee or ""):
                 if rule.account_id:
                     txn.category_account_id = rule.account_id
                 txn.match_status = "auto"

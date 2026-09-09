@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     CheckConstraint,
     Index,
+    JSON,
     Text,
     UniqueConstraint,
     func,
@@ -165,6 +166,7 @@ class BankTransactionProposal(Base):
     posting_route = Column(String(30), nullable=False, default="hold")
 
     normalized_counterparty = Column(String(200), nullable=True)
+    normalized_counterparty_key = Column(String(200), nullable=True, index=True)
     counterparty_role = Column(String(20), nullable=True)
     counterparty_resolution = Column(String(20), nullable=False, default="unresolved")
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
@@ -181,6 +183,7 @@ class BankTransactionProposal(Base):
 
     proposal_source = Column(String(20), nullable=False, default="human")
     confidence = Column(Numeric(5, 4), nullable=True)
+    confidence_components = Column(JSON, nullable=True)
     rationale = Column(Text, nullable=True)
     normalizer_version = Column(String(50), nullable=True)
     supersedes_id = Column(
@@ -210,6 +213,72 @@ class BankTransactionProposal(Base):
     supersedes = relationship(
         "BankTransactionProposal", remote_side=[id], foreign_keys=[supersedes_id]
     )
+
+
+class BankCounterpartyAlias(Base):
+    """Reviewed exact mapping from normalized bank text to a counterparty."""
+
+    __tablename__ = "bank_counterparty_aliases"
+    __table_args__ = (
+        CheckConstraint(
+            "direction IN ('any', 'deposit', 'withdrawal')",
+            name="ck_bank_alias_direction",
+        ),
+        CheckConstraint(
+            "(customer_id IS NOT NULL AND vendor_id IS NULL) OR "
+            "(vendor_id IS NOT NULL AND customer_id IS NULL) OR "
+            "(customer_id IS NULL AND vendor_id IS NULL)",
+            name="ck_bank_alias_contact_exclusive",
+        ),
+        CheckConstraint(
+            "counterparty_role IN ('payer', 'payee', 'not_applicable')",
+            name="ck_bank_alias_counterparty_role",
+        ),
+        CheckConstraint(
+            "counterparty_role != 'not_applicable' OR "
+            "(customer_id IS NULL AND vendor_id IS NULL)",
+            name="ck_bank_alias_not_applicable_contact",
+        ),
+        Index(
+            "uq_bank_alias_global",
+            "normalized_pattern",
+            "direction",
+            unique=True,
+            sqlite_where=text("is_active = true AND bank_account_id IS NULL"),
+            postgresql_where=text("is_active = true AND bank_account_id IS NULL"),
+        ),
+        Index(
+            "uq_bank_alias_scoped",
+            "bank_account_id",
+            "normalized_pattern",
+            "direction",
+            unique=True,
+            sqlite_where=text("is_active = true AND bank_account_id IS NOT NULL"),
+            postgresql_where=text("is_active = true AND bank_account_id IS NOT NULL"),
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    pattern = Column(String(500), nullable=False)
+    normalized_pattern = Column(String(200), nullable=False, index=True)
+    canonical_name = Column(String(200), nullable=False)
+    bank_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=True)
+    direction = Column(String(20), nullable=False, default="any")
+    counterparty_role = Column(String(20), nullable=False)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
+    default_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
+    default_class_id = Column(Integer, ForeignKey("classes.id"), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    normalizer_version = Column(String(50), nullable=False)
+    created_by = Column(String(200), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    bank_account = relationship("BankAccount", foreign_keys=[bank_account_id])
+    customer = relationship("Customer", foreign_keys=[customer_id])
+    vendor = relationship("Vendor", foreign_keys=[vendor_id])
+    default_account = relationship("Account", foreign_keys=[default_account_id])
+    default_class = relationship("TxnClass", foreign_keys=[default_class_id])
 
 
 class Reconciliation(Base):

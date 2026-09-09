@@ -13,13 +13,19 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.routes._helpers import clamp_pagination
+from app.models.accounts import Account
 from app.models.banking import (
     BankAccount,
+    BankCounterpartyAlias,
     BankTransaction,
     BankTransactionProposal,
     Reconciliation,
     ReconciliationStatus,
 )
+from app.models.bills import Bill
+from app.models.classes import TxnClass
+from app.models.contacts import Customer, Vendor
+from app.models.invoices import Invoice
 from app.schemas.banking import (
     BankAccountCreate,
     BankAccountUpdate,
@@ -31,12 +37,20 @@ from app.schemas.banking import (
     BankTransactionProposalResponse,
     BankReviewQueueItem,
     BankTransactionReviewResponse,
+    BankCounterpartyAliasCreate,
+    BankCounterpartyAliasResponse,
     BankTransferPost,
     ReconciliationCreate,
     ReconciliationResponse,
 )
 from app.services.closing_date import check_closing_date
 from app.services.bank_posting import post_bank_transaction, post_bank_transfer
+from app.services.bank_classification import build_bank_suggestion
+from app.services.bank_normalization import (
+    NORMALIZER_VERSION,
+    normalize_bank_text,
+    normalize_contact_name,
+)
 
 router = APIRouter(prefix="/api/banking", tags=["banking"])
 
@@ -114,6 +128,15 @@ def create_bank_transaction(data: BankTransactionCreate, db: Session = Depends(g
 
 
 ACTIVE_PROPOSAL_STATUSES = ("proposed", "approved")
+REFERENCE_MODELS = {
+    "customer_id": Customer,
+    "vendor_id": Vendor,
+    "counter_account_id": Account,
+    "class_id": TxnClass,
+    "invoice_id": Invoice,
+    "bill_id": Bill,
+    "paired_bank_transaction_id": BankTransaction,
+}
 
 
 def _active_proposal_query(db: Session):
@@ -131,6 +154,65 @@ def _active_proposals_by_transaction(
         BankTransactionProposal.bank_transaction_id.in_(transaction_ids)
     )
     return {proposal.bank_transaction_id: proposal for proposal in proposals.all()}
+
+
+def _validate_reference_ids(db: Session, values: dict) -> None:
+    for field, model in REFERENCE_MODELS.items():
+        object_id = values.get(field)
+        if object_id is not None and db.get(model, object_id) is None:
+            raise HTTPException(status_code=400, detail=f"Invalid {field}")
+
+
+def _persist_proposal(
+    db: Session, transaction_id: int, values: dict
+) -> BankTransactionProposal:
+    txn = db.get(BankTransaction, transaction_id)
+    if not txn:
+        raise HTTPException(status_code=404, detail="Bank transaction not found")
+    if txn.transaction_id is not None:
+        raise HTTPException(
+            status_code=409, detail="Bank transaction is already posted"
+        )
+    if (
+        _active_proposal_query(db)
+        .filter(BankTransactionProposal.bank_transaction_id == transaction_id)
+        .first()
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Bank transaction already has an active proposal",
+        )
+
+    _validate_reference_ids(db, values)
+    if values.get("paired_bank_transaction_id") == transaction_id:
+        raise HTTPException(
+            status_code=400, detail="A bank transaction cannot be paired with itself"
+        )
+
+    revision = (
+        db.query(func.max(BankTransactionProposal.revision))
+        .filter(BankTransactionProposal.bank_transaction_id == transaction_id)
+        .scalar()
+        or 0
+    ) + 1
+    proposal = BankTransactionProposal(
+        bank_transaction_id=transaction_id,
+        revision=revision,
+        status="proposed",
+        created_by=db.info.get("acting_username") or "system",
+        **values,
+    )
+    db.add(proposal)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A concurrent proposal already became active; reload and retry",
+        )
+    db.refresh(proposal)
+    return proposal
 
 
 @router.get("/review", response_model=list[BankReviewQueueItem])
@@ -218,81 +300,109 @@ def create_bank_transaction_proposal(
     db: Session = Depends(get_db),
 ):
     """Create a review proposal. This endpoint never posts to the ledger."""
+    values = data.model_dump()
+    if data.normalized_counterparty:
+        values["normalized_counterparty_key"] = normalize_contact_name(
+            data.normalized_counterparty
+        )
+    return _persist_proposal(db, transaction_id, values)
+
+
+@router.post(
+    "/transactions/{transaction_id}/suggest",
+    response_model=BankTransactionProposalResponse,
+    status_code=201,
+)
+def suggest_bank_transaction(transaction_id: int, db: Session = Depends(get_db)):
+    """Create one deterministic proposal without posting or changing evidence."""
     txn = db.get(BankTransaction, transaction_id)
     if not txn:
         raise HTTPException(status_code=404, detail="Bank transaction not found")
-    if txn.transaction_id is not None:
-        raise HTTPException(
-            status_code=409, detail="Bank transaction is already posted"
-        )
-    if (
-        _active_proposal_query(db)
-        .filter(BankTransactionProposal.bank_transaction_id == transaction_id)
-        .first()
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="Bank transaction already has an active proposal",
-        )
+    return _persist_proposal(db, transaction_id, build_bank_suggestion(db, txn))
 
-    reference_models = {
-        "customer_id": "Customer",
-        "vendor_id": "Vendor",
-        "counter_account_id": "Account",
-        "class_id": "TxnClass",
-        "invoice_id": "Invoice",
-        "bill_id": "Bill",
-        "paired_bank_transaction_id": "BankTransaction",
-    }
-    from app.models.accounts import Account
-    from app.models.bills import Bill
-    from app.models.classes import TxnClass
-    from app.models.contacts import Customer, Vendor
-    from app.models.invoices import Invoice
 
-    models = {
-        "Customer": Customer,
-        "Vendor": Vendor,
-        "Account": Account,
-        "TxnClass": TxnClass,
-        "Invoice": Invoice,
-        "Bill": Bill,
-        "BankTransaction": BankTransaction,
-    }
+@router.get("/counterparty-aliases", response_model=list[BankCounterpartyAliasResponse])
+def list_counterparty_aliases(
+    bank_account_id: int = None, db: Session = Depends(get_db)
+):
+    query = db.query(BankCounterpartyAlias).filter(BankCounterpartyAlias.is_active)
+    if bank_account_id is not None:
+        query = query.filter(
+            (BankCounterpartyAlias.bank_account_id == bank_account_id)
+            | BankCounterpartyAlias.bank_account_id.is_(None)
+        )
+    return query.order_by(
+        BankCounterpartyAlias.bank_account_id.desc(),
+        BankCounterpartyAlias.canonical_name,
+    ).all()
+
+
+@router.post(
+    "/counterparty-aliases",
+    response_model=BankCounterpartyAliasResponse,
+    status_code=201,
+)
+def create_counterparty_alias(
+    data: BankCounterpartyAliasCreate, db: Session = Depends(get_db)
+):
     values = data.model_dump()
-    for field, model_name in reference_models.items():
+    if data.bank_account_id is not None:
+        scoped_register = db.get(BankAccount, data.bank_account_id)
+        if scoped_register is None:
+            raise HTTPException(status_code=400, detail="Invalid bank_account_id")
+        if not scoped_register.is_active:
+            raise HTTPException(status_code=400, detail="Inactive bank_account_id")
+    for field, model in (
+        ("customer_id", Customer),
+        ("vendor_id", Vendor),
+        ("default_account_id", Account),
+        ("default_class_id", TxnClass),
+    ):
         object_id = values.get(field)
-        if object_id is not None and db.get(models[model_name], object_id) is None:
+        if object_id is None:
+            continue
+        referenced = db.get(model, object_id)
+        if referenced is None:
             raise HTTPException(status_code=400, detail=f"Invalid {field}")
-    if values.get("paired_bank_transaction_id") == transaction_id:
-        raise HTTPException(
-            status_code=400, detail="A bank transaction cannot be paired with itself"
-        )
+        if field in ("customer_id", "vendor_id", "default_account_id") and not (
+            referenced.is_active
+        ):
+            raise HTTPException(status_code=400, detail=f"Inactive {field}")
+        if field == "default_class_id" and referenced.is_archived:
+            raise HTTPException(status_code=400, detail="Archived default_class_id")
 
-    revision = (
-        db.query(func.max(BankTransactionProposal.revision))
-        .filter(BankTransactionProposal.bank_transaction_id == transaction_id)
-        .scalar()
-        or 0
-    ) + 1
-    proposal = BankTransactionProposal(
-        bank_transaction_id=transaction_id,
-        revision=revision,
-        status="proposed",
+    normalized = normalize_bank_text(data.pattern, None)
+    if not normalized.normalized_key:
+        raise HTTPException(status_code=400, detail="Alias pattern has no usable text")
+    values.update(
+        pattern=data.pattern.strip(),
+        canonical_name=data.canonical_name.strip(),
+        normalized_pattern=normalized.normalized_key,
+        normalizer_version=NORMALIZER_VERSION,
         created_by=db.info.get("acting_username") or "system",
-        **values,
     )
-    db.add(proposal)
+    alias = BankCounterpartyAlias(**values)
+    db.add(alias)
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="A concurrent proposal already became active; reload and retry",
+            detail="An active alias already exists for this scope and direction",
         )
-    db.refresh(proposal)
-    return proposal
+    db.refresh(alias)
+    return alias
+
+
+@router.delete("/counterparty-aliases/{alias_id}")
+def deactivate_counterparty_alias(alias_id: int, db: Session = Depends(get_db)):
+    alias = db.get(BankCounterpartyAlias, alias_id)
+    if not alias:
+        raise HTTPException(status_code=404, detail="Counterparty alias not found")
+    alias.is_active = False
+    db.commit()
+    return {"status": "deactivated", "id": alias_id}
 
 
 @router.post("/transactions/{transaction_id}/post")
