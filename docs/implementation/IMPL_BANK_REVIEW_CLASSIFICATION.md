@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.5
+**Version:** 1.6
 **Last Updated:** September 9, 2026
-**Status:** Phase 4 complete; Phase 5 is next
+**Status:** Phase 5 complete; Phase 6 controlled rollout is next
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -66,8 +66,8 @@ parent banking roadmap.
   posting are merged in the fork.
 - `BankTransaction` retains statement text and may link to one ledger
   transaction, but it has no customer/vendor or class-decision model.
-- Bank Rules currently apply an account only; their `vendor_id` value is not
-  applied by the rule engine.
+- Legacy Bank Rules apply an account category at import; Phase 5 expands them
+  into scoped, non-posting proposal memory while preserving that behavior.
 - The built-in AI tools are read-only and do not propose or post bank work.
 - Existing AR/AP routes already validate invoice and bill allocations. They are
   authoritative for future payment-application work.
@@ -318,27 +318,39 @@ posting make retries safe, including either side of a paired transfer.
 
 ---
 
-## Phase 5 — Bank Rules as reviewed learning 🔲
+## Phase 5 — Bank Rules as reviewed learning 🟩
 
 **Deliverables:**
 
-- [ ] Extend Bank Rules to propose intent, counter-account, contact, and class
+- [x] Extend Bank Rules to propose intent, counter-account, contact, and class
   resolution in addition to category metadata.
-- [ ] Scope rules by optional register and transaction direction.
-- [ ] Add conservative optional amount bounds.
-- [ ] Apply rules to normalized matching fields while retaining raw-pattern
+- [x] Scope rules by optional register and transaction direction.
+- [x] Add conservative optional amount bounds.
+- [x] Apply rules to normalized matching fields while retaining raw-pattern
   support for exact institution text.
-- [ ] Fix vendor rule application and add equivalent customer support.
-- [ ] Offer, but do not silently create, a narrow rule after approval.
-- [ ] Keep classification and posting policies separate.
+- [x] Fix vendor rule application and add equivalent customer support.
+- [x] Offer, but do not silently create, a narrow rule after approval.
+- [x] Keep classification and posting policies separate.
 
 **Tests:**
 
-- [ ] Priority and first-match behavior
-- [ ] Register and direction scoping
-- [ ] Contact and class proposal application
-- [ ] A matching rule does not itself post unless a separately tested policy
+- [x] Priority and first-match behavior
+- [x] Register and direction scoping
+- [x] Contact and class proposal application
+- [x] A matching rule does not itself post unless a separately tested policy
   authorizes it
+
+**Completed:** September 9, 2026. Migration `2c7d9e1f4a6b` adds optional
+register, direction, inclusive amount range, normalized/raw matching, intent,
+route, contact, and class decisions while defaulting existing rules to their
+legacy raw/any scope. Highest priority wins and oldest rule ID breaks a tie.
+
+Import-time and manual rule application retain the category hint and create a
+`proposed` review record when no active proposal exists. They cannot approve or
+post. Approved direct income and expense proposals expose a read-only rule
+draft scoped to exact normalized counterparty, register, and direction; the
+reviewer must separately create it. Existing customer/vendor links are reused,
+and no statement name creates a contact.
 
 ---
 

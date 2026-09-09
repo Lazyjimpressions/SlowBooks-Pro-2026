@@ -43,7 +43,7 @@ files under `migrations/versions/`; for model code, see `app/models/`.
 | `pay_stubs` | Individual pay stubs with withholding breakdowns |
 | `qbo_mappings` | QBO ID ↔ Slowbooks ID mapping for sync deduplication |
 | `attachments` | File attachments linked to invoices, bills, etc. |
-| `bank_rules` | Pattern-matching rules for auto-categorizing bank imports |
+| `bank_rules` | Scoped, deterministic mappings that create review proposals without posting |
 | `budgets` | Budget amounts by account and period |
 | `email_templates` | Customizable email templates |
 | `inventory_movements` | Per-item qty/cost ledger (purchases, sales, adjustments) |
@@ -100,4 +100,3 @@ committed cost. Migration `f0a1b2c3d4e5_add_cost_codes`.
 | employees.cost_rate, burden_pct · estimate_lines.unit_cost · time_entries.job_cost_id · transaction_lines.cost_type | |
 
 Migration `a1b2c3d4e5f6_job_cost_model`.
-

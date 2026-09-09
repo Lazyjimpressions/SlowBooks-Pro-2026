@@ -22,7 +22,9 @@
   equal-and-opposite rows can be paired as one balance-sheet transfer.
 - Import deduplication exists, but the v2.9.3 baseline does not move
   `BankAccount.balance` for imported rows.
-- Bank Rules attach category metadata but do not create journal entries.
+- Bank Rules can propose intent, counter-account, existing customer/vendor,
+  class, and payer/payee using raw or normalized text with optional register,
+  direction, and amount scope. They never approve or post.
 - Versioned bank-review proposals preserve normalized counterparty, optional
   existing customer/vendor, class resolution, confidence, and rationale
   separately from imported evidence.
@@ -33,10 +35,21 @@
 
 ## Active work
 
-`feat/bank-approved-proposal-posting` implements Phase 4 of
-`docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md`. Phase 5 will extend
-Bank Rules as reviewed proposal memory without coupling rule matching to
-posting authority.
+`feat/bank-rules-reviewed-learning` implements Phase 5 of
+`docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md`, stacked on draft PR
+#14. Phase 6 will merge, package, back up the test company, and validate these
+banking phases in one controlled macOS build.
+
+## Verification status
+
+- Draft PR #14 passes Linux pytest, lint, Docker build, and secret scanning.
+- Its dependency-audit job fails on the unchanged upstream
+  `weasyprint==69.0` pin; the published remediation is 70.0. Resolve and test
+  that dependency separately before Phase 6 claims an all-green gate.
+- The local macOS suite has one known OCR engine-selection mismatch because
+  the installed native OCR path can process the synthetic PDF when the test
+  expects the no-Poppler path to reject it. Linux CI is authoritative for that
+  environment-specific test.
 
 ## Installed test app
 

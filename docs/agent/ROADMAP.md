@@ -15,6 +15,8 @@
 
 ## Contacts and deterministic learning
 
+Implemented through Bank Review Classification Phase 5:
+
 - Make bank review classify each row by transaction intent, counter-account,
   contact role, contact, and class before posting.
 - Let a company configure a visible default class such as Personal, keep the
@@ -26,6 +28,9 @@
 - Preserve the imported payee and description as evidence while storing any
   cleaned display name or normalized counterparty separately.
 - Offer a narrow rule after an AI mapping is approved.
+
+Rules produce review proposals only. Approval and posting remain separate
+policy and accounting operations.
 
 ## Controlled automation
 

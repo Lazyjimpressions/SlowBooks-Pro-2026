@@ -104,11 +104,14 @@
         const components = (p.confidence_components || []).map(c =>
             `<li><strong>${escapeHtml(c.name.replaceAll('_', ' '))}</strong>: ${escapeHtml(c.detail)}</li>`).join('');
 
+        const ruleAction = ['direct_expense', 'direct_income'].includes(p.intent)
+            ? `<button type="button" class="btn btn-secondary" data-bank-rule-draft="${p.id}">Create Rule from Review</button>` : '';
         const actions = p.status === 'posted'
-            ? `<button type="button" class="btn btn-danger" data-bank-review-reverse="${p.id}">Reverse &amp; Reopen</button>`
+            ? `${ruleAction}<button type="button" class="btn btn-danger" data-bank-review-reverse="${p.id}">Reverse &amp; Reopen</button>`
             : p.status === 'approved'
                 ? `<button type="button" class="btn btn-secondary" data-bank-review-supersede="${p.id}">Supersede</button>
                    <button type="submit" class="btn btn-secondary">Save Correction</button>
+                   ${ruleAction}
                    <button type="button" class="btn btn-primary" data-bank-review-post="${p.id}">Post Approved Proposal</button>`
                 : `<button type="button" class="btn btn-secondary" data-bank-review-reject="${p.id}">Reject</button>
                    <button type="button" class="btn btn-secondary" data-bank-review-supersede="${p.id}">Supersede</button>
@@ -261,6 +264,13 @@
         } catch (err) { toast(err.message, 'error'); }
     };
 
+    BankingPage.createRuleDraft = async function (proposalId) {
+        try {
+            const draft = await API.get(`/bank-rules/proposal-draft/${proposalId}`);
+            await BankRulesPage.showForm(null, draft);
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
     BankingPage.showContactGate = function (type, transactionId) {
         const form = document.getElementById('bank-review-form');
         const proposedName = form ? form.normalized_counterparty.value.trim() : '';
@@ -299,7 +309,7 @@
     // browser CSP and the desktop web view without adding more inline-handler
     // debt to the application.
     document.addEventListener('click', event => {
-        const target = event.target.closest('[data-bank-review-id], [data-bank-suggest-id], [data-bank-review-status], [data-bank-register-id], [data-bank-review-bulk], [data-bank-review-reject], [data-bank-review-supersede], [data-bank-review-approve], [data-bank-review-post], [data-bank-review-reverse], [data-bank-contact-gate]');
+        const target = event.target.closest('[data-bank-review-id], [data-bank-suggest-id], [data-bank-review-status], [data-bank-register-id], [data-bank-review-bulk], [data-bank-review-reject], [data-bank-review-supersede], [data-bank-review-approve], [data-bank-review-post], [data-bank-review-reverse], [data-bank-rule-draft], [data-bank-contact-gate]');
         if (!target) return;
         if (target.dataset.bankReviewId) BankingPage.showReview(Number(target.dataset.bankReviewId));
         else if (target.dataset.bankSuggestId) BankingPage.suggestReview(Number(target.dataset.bankSuggestId));
@@ -311,6 +321,7 @@
         else if (target.dataset.bankReviewApprove) BankingPage.saveReview(event, Number(target.dataset.bankReviewApprove), true);
         else if (target.dataset.bankReviewPost) BankingPage.postApprovedReview(Number(target.dataset.bankReviewPost));
         else if (target.dataset.bankReviewReverse) BankingPage.reversePostedReview(Number(target.dataset.bankReviewReverse));
+        else if (target.dataset.bankRuleDraft) BankingPage.createRuleDraft(Number(target.dataset.bankRuleDraft));
         else if (target.dataset.bankContactGate) BankingPage.showContactGate(target.dataset.bankContactGate, Number(target.dataset.bankTransactionId));
     });
     document.addEventListener('change', event => {

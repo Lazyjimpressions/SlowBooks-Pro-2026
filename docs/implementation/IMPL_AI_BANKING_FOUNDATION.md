@@ -1,9 +1,9 @@
 # Implementation Plan: AI Banking Foundation
 
-**Version:** 1.2
+**Version:** 1.3
 **Last Updated:** September 9, 2026
-**Status:** Bank review classification Phase 4 complete; expanded Bank Rules
-are next
+**Status:** Bank review classification Phase 5 complete; controlled rollout is
+next
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
@@ -89,7 +89,7 @@ Detailed execution is tracked in
   role/contact, class, confidence, and rationale
 - [x] Vendor/customer suggestions
 - [x] Approved contact links retained on posted ledger transactions
-- [ ] Bank Rule contact, class, counter-account, and transaction-intent
+- [x] Bank Rule contact, class, counter-account, and transaction-intent
   application
 - [x] Preserve raw descriptions and store normalized matching fields separately
 - [x] Post approved direct income, expense, balance-sheet activity, and

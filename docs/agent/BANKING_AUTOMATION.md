@@ -58,13 +58,25 @@ Rules are durable deterministic memory, not a substitute for first-time
 reasoning. AI handles unseen or ambiguous rows. An approved AI mapping may
 offer to create a narrowly scoped rule for future occurrences.
 
+A Bank Rule can match raw statement text or `bank-text-v1` normalized text and
+may be scoped by register, deposit/withdrawal direction, and inclusive absolute
+amount bounds. Its proposal fields include intent/route, counter-account,
+payer/payee, an existing customer or vendor, and class resolution. Legacy
+account-only rules continue to supply category hints.
+
+`POST /api/bank-rules/apply` creates proposed review records for matching
+unposted rows. It does not approve or post them. `GET
+/api/bank-rules/proposal-draft/{proposal_id}` returns a prefilled exact,
+normalized, register-and-direction-scoped draft for an approved direct income
+or expense; saving the draft is a separate `POST /api/bank-rules` action.
+
 Deterministic suggestions use this precedence:
 
 1. unique equal-and-opposite rows in another linked register;
 2. reviewed exact aliases, scoped aliases before global aliases;
 3. prior approved or posted proposals with the same normalized key and
    direction;
-4. existing Bank Rules;
+4. the highest-priority matching Bank Rule, with older rule ID breaking a tie;
 5. one exact normalized customer or vendor name;
 6. open invoice or bill amount/date/reference candidates.
 
