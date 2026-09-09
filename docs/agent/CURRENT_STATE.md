@@ -3,7 +3,7 @@
 **Verified:** 2026-09-09
 **Upstream source:** `VonHoltenCodes/SlowBooks-Pro-2026`  
 **Fork:** `Lazyjimpressions/SlowBooks-Pro-2026`  
-**Baseline:** upstream v2.9.4 plus fork banking Phases 1-5
+**Baseline:** upstream v2.9.4 plus completed fork banking Phases 1-6
 
 ## Repository model
 
@@ -35,10 +35,11 @@
 
 ## Active work
 
-PRs #14 and #15 merged Phases 4 and 5. The
-`chore/phase6-controlled-rollout` branch is preparing Phase 6 by remediating
-the WeasyPrint dependency advisory, running the release gates, and producing
-one exact-commit macOS build before live-test validation.
+Bank review classification Phases 0-6 are complete. PR #16 merged the release
+dependency remediation, and its exact merge commit was built and validated on
+macOS before controlled installation. Future banking work remains separately
+scoped in the roadmap; do not combine merchant settlement or unapplied-payment
+application with the completed banking-review foundation.
 
 ## Verification status
 
@@ -53,11 +54,27 @@ one exact-commit macOS build before live-test validation.
   known macOS OCR engine-selection mismatch described below.
 - A full downgrade to Alembic base exposes a pre-existing SQLite defect in the
   legacy Tier 3 HR downgrade at `b8c9d0e1f2a3`; current databases and the new
-  banking migrations upgrade successfully to head.
+  banking migrations upgrade successfully to head. Issue #17 tracks the
+  historical downgrade defect.
 - The local macOS suite has one known OCR engine-selection mismatch because
   the installed native OCR path can process the synthetic PDF when the test
   expects the no-Poppler path to reject it. Linux CI is authoritative for that
   environment-specific test.
+- PR #16 passed Linux pytest/coverage, lint, dependency audit, Gitleaks, and
+  Docker build/start. macOS workflow run `34408086809` built merge commit
+  `9d8de31924ca81137967fc855d061e32f99f7774`; its checksums, frozen bundle,
+  smoke tests, PDF rendering, and native OCR validation passed.
+- The exact v2.9.4 fork build migrated the test company to Alembic head
+  `2c7d9e1f4a6b`. A verified out-of-repository SQLite snapshot was taken first.
+- Live acceptance covered personal/no-class expense, `Sch C - Lazyj` expense,
+  direct business income, transfer, credit-card payment, reimbursement,
+  text-only unknown counterparty, and held AR/AP candidates. Every write was
+  re-read through the API; direct and transfer posting retries were
+  idempotent, reversals restored every chart-account net balance, and the
+  trial balance remained balanced. Reversals intentionally retain equal gross
+  debit/credit audit activity.
+- The original six register balances and every existing BoA Savings row,
+  posting link, and reconciliation flag remained unchanged.
 
 ## Installed test app
 

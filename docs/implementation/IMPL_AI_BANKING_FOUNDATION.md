@@ -1,9 +1,8 @@
 # Implementation Plan: AI Banking Foundation
 
-**Version:** 1.3
+**Version:** 1.4
 **Last Updated:** September 9, 2026
-**Status:** Bank review classification Phase 5 complete; controlled rollout is
-in progress
+**Status:** Bank review classification Phases 0-6 complete
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
@@ -104,6 +103,24 @@ default class and `Sch C - Lazyj` is the first business class. A pure
 balance-sheet transaction uses `not_applicable`; a row without an approved
 proposal remains unresolved. Do not create contacts merely because a statement
 contains a new name.
+
+---
+
+## Phase 6 — Controlled rollout 🟩
+
+- [x] Release dependency advisory remediated and audited
+- [x] Local banking, PDF, formatting, lint, migration, and full-suite gates run
+- [x] Fork CI, secret scanning, dependency audit, and Docker checks passed
+- [x] Exact merged commit built and validated on macOS
+- [x] Test company backed up and forward-migrated to banking schema head
+- [x] Live proposal, approval, posting, idempotency, reversal, transfer,
+  card-payment, reimbursement, class, contact, and AR/AP-hold paths validated
+- [x] Existing register balances and BoA Savings evidence verified unchanged
+
+The controlled rollout validates the architecture boundary: AI and rules may
+propose, reviewers approve, deterministic services post, and domain candidates
+remain held for AR/AP application. Reversals preserve audit history while
+restoring net account and reporting balances.
 
 ## Future phase — AR/AP application and merchant settlement 🔲
 
