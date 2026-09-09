@@ -3,9 +3,12 @@
 from datetime import date as dt_date
 from decimal import Decimal
 
+import pytest
+
 from app.models.banking import BankAccount, BankTransaction
 from app.models.classes import TxnClass
 from app.models.transactions import Transaction, TransactionLine
+from app.services.bank_posting import post_bank_transaction, post_bank_transfer
 
 
 def _register(db, account, name):
@@ -40,10 +43,11 @@ def test_positive_feed_posts_income_with_class_once(client, db_session, seed_acc
     db_session.commit()
 
     payload = {"counter_account_id": income.id, "class_id": cls.id}
-    first = client.post(f"/api/banking/transactions/{feed.id}/post", json=payload)
-    assert first.status_code == 200
-    assert first.json()["status"] == "posted"
-    ledger_id = first.json()["transaction_id"]
+    first = post_bank_transaction(
+        db_session, feed, payload["counter_account_id"], class_id=payload["class_id"]
+    )
+    assert first["status"] == "posted"
+    ledger_id = first["transaction_id"]
 
     db_session.expire_all()
     linked = db_session.get(BankTransaction, feed.id)
@@ -60,9 +64,10 @@ def test_positive_feed_posts_income_with_class_once(client, db_session, seed_acc
     }
     assert all(line.class_id == cls.id for line in lines)
 
-    second = client.post(f"/api/banking/transactions/{feed.id}/post", json=payload)
-    assert second.status_code == 200
-    assert second.json()["status"] == "already_posted"
+    second = post_bank_transaction(
+        db_session, feed, payload["counter_account_id"], class_id=payload["class_id"]
+    )
+    assert second["status"] == "already_posted"
     assert db_session.query(Transaction).filter_by(source_type="bank_feed").count() == 1
 
 
@@ -74,13 +79,8 @@ def test_opposite_feed_rows_post_as_one_transfer(client, db_session, seed_accoun
     incoming = _feed(db_session, checking_register, "25000.00", date="2026-05-27")
     outgoing = _feed(db_session, savings_register, "-25000.00", date="2026-05-27")
 
-    payload = {
-        "first_transaction_id": incoming.id,
-        "second_transaction_id": outgoing.id,
-    }
-    response = client.post("/api/banking/transfers/post", json=payload)
-    assert response.status_code == 200
-    ledger_id = response.json()["transaction_id"]
+    response = post_bank_transfer(db_session, incoming, outgoing)
+    ledger_id = response["transaction_id"]
 
     db_session.expire_all()
     assert db_session.get(BankTransaction, incoming.id).transaction_id == ledger_id
@@ -95,9 +95,8 @@ def test_opposite_feed_rows_post_as_one_transfer(client, db_session, seed_accoun
         (savings.id, Decimal("0.00"), Decimal("25000.00")),
     }
 
-    retry = client.post("/api/banking/transfers/post", json=payload)
-    assert retry.status_code == 200
-    assert retry.json()["status"] == "already_posted"
+    retry = post_bank_transfer(db_session, incoming, outgoing)
+    assert retry["status"] == "already_posted"
     assert (
         db_session.query(Transaction).filter_by(source_type="bank_transfer").count()
         == 1
@@ -113,12 +112,8 @@ def test_single_post_rejects_another_linked_bank_account(
     _register(db_session, savings, "Savings")
     feed = _feed(db_session, checking_register, "-10.00")
 
-    response = client.post(
-        f"/api/banking/transactions/{feed.id}/post",
-        json={"counter_account_id": savings.id},
-    )
-    assert response.status_code == 400
-    assert "bank-transfer endpoint" in response.json()["detail"]
+    with pytest.raises(ValueError, match="bank-transfer endpoint"):
+        post_bank_transaction(db_session, feed, savings.id)
     assert db_session.query(Transaction).filter_by(source_type="bank_feed").count() == 0
 
 
@@ -130,12 +125,8 @@ def test_negative_card_feed_debits_expense_and_credits_liability(
     register = _register(db_session, card, "Credit card")
     feed = _feed(db_session, register, "-89.99", payee="Office supplier")
 
-    response = client.post(
-        f"/api/banking/transactions/{feed.id}/post",
-        json={"counter_account_id": expense.id},
-    )
-    assert response.status_code == 200
-    ledger_id = response.json()["transaction_id"]
+    response = post_bank_transaction(db_session, feed, expense.id)
+    ledger_id = response["transaction_id"]
     lines = (
         db_session.query(TransactionLine)
         .filter(TransactionLine.transaction_id == ledger_id)
@@ -153,12 +144,5 @@ def test_transfer_rejects_amount_mismatch(client, db_session, seed_accounts):
     first = _feed(db_session, checking_register, "10.00")
     second = _feed(db_session, savings_register, "-9.00")
 
-    response = client.post(
-        "/api/banking/transfers/post",
-        json={
-            "first_transaction_id": first.id,
-            "second_transaction_id": second.id,
-        },
-    )
-    assert response.status_code == 400
-    assert "equal and opposite" in response.json()["detail"]
+    with pytest.raises(ValueError, match="equal and opposite"):
+        post_bank_transfer(db_session, first, second)

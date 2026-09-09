@@ -3,7 +3,7 @@
 **Verified:** 2026-09-09
 **Upstream source:** `VonHoltenCodes/SlowBooks-Pro-2026`  
 **Fork:** `Lazyjimpressions/SlowBooks-Pro-2026`  
-**Baseline:** upstream v2.9.4 plus merged fork banking Phases 1-2
+**Baseline:** upstream v2.9.4 plus merged fork banking Phases 1-3
 
 ## Repository model
 
@@ -26,17 +26,17 @@
 - Versioned bank-review proposals preserve normalized counterparty, optional
   existing customer/vendor, class resolution, confidence, and rationale
   separately from imported evidence.
-- Phase 3 adds review/correction/approval without posting. Contact creation is
-  separately confirmed and duplicate-checked; approval cannot create a ledger
-  entry.
+- Phase 4 posts only approved proposals, retains class and counterparty
+  provenance, holds AR/AP candidates, and corrects posted rows by reversal and
+  replacement rather than editing ledger history.
 - The built-in AI tool catalogue is read-only analysis/search.
 
 ## Active work
 
-`feat/bank-review-approval` implements Phase 3 of
-`docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md`. Phase 4 will consume
-approved proposals through guarded domain posting services and retain their
-class and counterparty provenance.
+`feat/bank-approved-proposal-posting` implements Phase 4 of
+`docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md`. Phase 5 will extend
+Bank Rules as reviewed proposal memory without coupling rule matching to
+posting authority.
 
 ## Installed test app
 

@@ -20,6 +20,7 @@ from app.services.closing_date import check_closing_date
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
 SOURCE_TYPE = "expense"
+BANK_SOURCE_TYPE = "bank_expense"
 VOID_SOURCE_TYPE = "expense_void"
 
 # Accounts an expense can be paid from: cash on hand or credit extended.
@@ -48,11 +49,9 @@ def _serialize(
         voided = txn.id in _void_ids(db, [txn.id])
     debit_line = next((ln for ln in txn.lines if ln.debit > 0), None)
     credit_line = next((ln for ln in txn.lines if ln.credit > 0), None)
-    vendor = (
-        db.query(Vendor).filter(Vendor.id == txn.source_id).first()
-        if txn.source_id
-        else None
-    )
+    vendor = txn.counterparty.vendor if txn.counterparty else None
+    if vendor is None and txn.source_type == SOURCE_TYPE and txn.source_id:
+        vendor = db.query(Vendor).filter(Vendor.id == txn.source_id).first()
     desc = txn.description or ""
     payee = vendor.name if vendor else desc.removeprefix("Expense: ").strip()
     return ExpenseResponse(
@@ -77,11 +76,19 @@ def _serialize(
 def list_expenses(db: Session = Depends(get_db)):
     txns = (
         db.query(Transaction)
-        .filter(Transaction.source_type == SOURCE_TYPE)
+        .filter(Transaction.source_type.in_((SOURCE_TYPE, BANK_SOURCE_TYPE)))
         .order_by(Transaction.date.desc(), Transaction.id.desc())
         .all()
     )
     voided = _void_ids(db, [t.id for t in txns])
+    voided.update(
+        txn.id
+        for txn in txns
+        if txn.source_type == BANK_SOURCE_TYPE
+        and txn.counterparty
+        and txn.counterparty.proposal
+        and txn.counterparty.proposal.status == "reversed"
+    )
     return [_serialize(t, db, t.id in voided) for t in txns]
 
 
@@ -89,7 +96,10 @@ def list_expenses(db: Session = Depends(get_db)):
 def get_expense(expense_id: int, db: Session = Depends(get_db)):
     txn = (
         db.query(Transaction)
-        .filter(Transaction.id == expense_id, Transaction.source_type == SOURCE_TYPE)
+        .filter(
+            Transaction.id == expense_id,
+            Transaction.source_type.in_((SOURCE_TYPE, BANK_SOURCE_TYPE)),
+        )
         .first()
     )
     if txn is None:
@@ -105,11 +115,19 @@ def void_expense(expense_id: int, db: Session = Depends(get_db)):
     account? Void it and enter it again."""
     txn = (
         db.query(Transaction)
-        .filter(Transaction.id == expense_id, Transaction.source_type == SOURCE_TYPE)
+        .filter(
+            Transaction.id == expense_id,
+            Transaction.source_type.in_((SOURCE_TYPE, BANK_SOURCE_TYPE)),
+        )
         .first()
     )
     if txn is None:
         raise HTTPException(status_code=404, detail="Expense not found")
+    if txn.source_type == BANK_SOURCE_TYPE:
+        raise HTTPException(
+            status_code=409,
+            detail="Reverse imported expenses from Banking Review to preserve provenance",
+        )
     if txn.id in _void_ids(db, [txn.id]):
         raise HTTPException(status_code=400, detail="Expense is already void")
 

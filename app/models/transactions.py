@@ -35,8 +35,16 @@ class Transaction(Base):
             "source_type",
             "source_id",
             unique=True,
-            sqlite_where=text("source_type IN ('bank_feed', 'bank_transfer')"),
-            postgresql_where=text("source_type IN ('bank_feed', 'bank_transfer')"),
+            sqlite_where=text(
+                "source_type IN ('bank_feed', 'bank_transfer', 'bank_expense', "
+                "'bank_income', 'bank_activity', 'bank_proposal_transfer', "
+                "'bank_proposal_reversal')"
+            ),
+            postgresql_where=text(
+                "source_type IN ('bank_feed', 'bank_transfer', 'bank_expense', "
+                "'bank_income', 'bank_activity', 'bank_proposal_transfer', "
+                "'bank_proposal_reversal')"
+            ),
         ),
     )
 
@@ -56,6 +64,12 @@ class Transaction(Base):
 
     lines = relationship(
         "TransactionLine", back_populates="transaction", cascade="all, delete-orphan"
+    )
+    counterparty = relationship(
+        "TransactionCounterparty",
+        back_populates="transaction",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
 
@@ -101,3 +115,46 @@ class TransactionLine(Base):
 
     transaction = relationship("Transaction", back_populates="lines")
     account = relationship("Account", back_populates="transaction_lines")
+
+
+class TransactionCounterparty(Base):
+    """Primary reviewed payor/payee attached to a posted journal transaction."""
+
+    __tablename__ = "transaction_counterparties"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('payer', 'payee')", name="ck_transaction_counterparty_role"
+        ),
+        CheckConstraint(
+            "NOT (customer_id IS NOT NULL AND vendor_id IS NOT NULL)",
+            name="ck_transaction_counterparty_contact_exclusive",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    transaction_id = Column(
+        Integer,
+        ForeignKey("transactions.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    role = Column(String(20), nullable=False)
+    display_name = Column(String(200), nullable=False)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
+    proposal_id = Column(
+        Integer,
+        ForeignKey("bank_transaction_proposals.id"),
+        nullable=True,
+        unique=True,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    transaction = relationship("Transaction", back_populates="counterparty")
+    customer = relationship("Customer", foreign_keys=[customer_id])
+    vendor = relationship("Vendor", foreign_keys=[vendor_id])
+    proposal = relationship(
+        "BankTransactionProposal",
+        back_populates="posted_counterparty",
+        foreign_keys=[proposal_id],
+    )

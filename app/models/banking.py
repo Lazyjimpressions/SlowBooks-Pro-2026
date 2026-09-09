@@ -101,7 +101,7 @@ class BankTransactionProposal(Base):
             name="uq_bank_transaction_proposal_revision",
         ),
         CheckConstraint(
-            "status IN ('proposed', 'approved', 'rejected', 'posted', 'superseded')",
+            "status IN ('proposed', 'approved', 'rejected', 'posted', 'reversed', 'superseded')",
             name="ck_bank_proposal_status",
         ),
         CheckConstraint(
@@ -197,6 +197,14 @@ class BankTransactionProposal(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     posted_at = Column(DateTime(timezone=True), nullable=True)
+    posted_transaction_id = Column(
+        Integer, ForeignKey("transactions.id"), nullable=True
+    )
+    reversal_transaction_id = Column(
+        Integer, ForeignKey("transactions.id"), nullable=True
+    )
+    reversed_by = Column(String(200), nullable=True)
+    reversed_at = Column(DateTime(timezone=True), nullable=True)
 
     bank_transaction = relationship(
         "BankTransaction",
@@ -214,6 +222,18 @@ class BankTransactionProposal(Base):
     bill = relationship("Bill", foreign_keys=[bill_id])
     supersedes = relationship(
         "BankTransactionProposal", remote_side=[id], foreign_keys=[supersedes_id]
+    )
+    posted_transaction = relationship(
+        "Transaction", foreign_keys=[posted_transaction_id]
+    )
+    reversal_transaction = relationship(
+        "Transaction", foreign_keys=[reversal_transaction_id]
+    )
+    posted_counterparty = relationship(
+        "TransactionCounterparty",
+        back_populates="proposal",
+        uselist=False,
+        foreign_keys="TransactionCounterparty.proposal_id",
     )
 
 

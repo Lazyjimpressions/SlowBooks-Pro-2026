@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.4
+**Version:** 1.5
 **Last Updated:** September 9, 2026
-**Status:** Phase 3 complete; Phase 4 is next
+**Status:** Phase 4 complete; Phase 5 is next
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -267,36 +267,54 @@ to be Personal or Uncategorized.
 
 ---
 
-## Phase 4 — Counterparty- and class-aware posting 🔲
+## Phase 4 — Counterparty- and class-aware posting 🟩
 
 **Deliverables:**
 
-- [ ] Extend guarded posting to consume an approved proposal rather than
+- [x] Extend guarded posting to consume an approved proposal rather than
   unconstrained journal input.
-- [ ] Persist the approved counterparty association on the resulting accounting
+- [x] Persist the approved counterparty association on the resulting accounting
   transaction using the Phase 0 ledger decision.
-- [ ] Pass `Sch C - Lazyj` consistently to journal headers and lines for
+- [x] Pass `Sch C - Lazyj` consistently to journal headers and lines for
   business activity.
-- [ ] Post approved personal activity with the explicit personal/no-class audit
+- [x] Post approved personal activity with the explicit personal/no-class audit
   decision retained on the proposal.
-- [ ] Dispatch direct expenses through shared Expense posting logic and direct
+- [x] Dispatch direct expenses through shared guarded journal logic and expose
+  them through the Expense module; dispatch direct
   income through an appropriate guarded receipt/journal service.
-- [ ] Continue using the paired transfer service for transfers.
-- [ ] Stop and retain AR/AP candidates in review until the future application
+- [x] Continue using the paired transfer service for transfers.
+- [x] Stop and retain AR/AP candidates in review until the future application
   endpoints can perform the subledger update correctly.
-- [ ] Add reversal-and-replace behavior for an incorrectly posted bank row.
-- [ ] Preserve retry safety across approval, posting, and concurrent requests.
+- [x] Add reversal-and-replace behavior for an incorrectly posted bank row.
+- [x] Preserve retry safety across approval, posting, and concurrent requests.
 
 **Tests:**
 
-- [ ] Bank and credit-card sign conventions
-- [ ] Personal and Schedule C class propagation
-- [ ] Vendor/payee and customer/payor persistence
-- [ ] Balanced direct income and expense entries
-- [ ] Transfer pairing without P&L impact
-- [ ] Idempotent retries and concurrent approval
-- [ ] Reversal retains source and proposal history
-- [ ] AR/AP candidate cannot bypass the domain-workflow hold
+- [x] Bank and credit-card sign conventions
+- [x] Personal and Schedule C class propagation
+- [x] Vendor/payee and customer/payor persistence
+- [x] Balanced direct income and expense entries
+- [x] Transfer pairing without P&L impact
+- [x] Idempotent retries and concurrent approval
+- [x] Reversal retains source and proposal history
+- [x] AR/AP candidate cannot bypass the domain-workflow hold
+
+**Completed:** September 9, 2026. `POST
+/api/banking/proposals/{id}/post` consumes only approved decisions and posts
+direct income, direct expenses, reviewed balance-sheet activity, or mutually
+approved transfers. Header and line classes remain aligned, and a new
+`TransactionCounterparty` relationship preserves the reviewed payer/payee and
+optional existing customer/vendor without overloading source identity. Generic
+posting endpoints now enforce the approved proposal rather than accepting an
+independent classification.
+
+Customer-payment, bill-payment, and hold routes remain non-posting until their
+subledger application workflows exist. `POST
+/api/banking/proposals/{id}/reverse` creates a dated reversing journal, retains
+the original proposal and source evidence, detaches the bank-row ledger link,
+and creates proposed replacement revisions for review. Reconciled rows cannot
+be reversed through this flow. Database source uniqueness and proposal-linked
+posting make retries safe, including either side of a paired transfer.
 
 ---
 

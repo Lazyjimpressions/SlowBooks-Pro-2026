@@ -37,6 +37,8 @@ from app.schemas.banking import (
     BankTransactionProposalResponse,
     BankProposalReviewAction,
     BankProposalBulkApprove,
+    BankProposalReverse,
+    BankProposalPostingResponse,
     BankReviewQueueItem,
     BankTransactionReviewResponse,
     BankCounterpartyAliasCreate,
@@ -46,7 +48,10 @@ from app.schemas.banking import (
     ReconciliationResponse,
 )
 from app.services.closing_date import check_closing_date
-from app.services.bank_posting import post_bank_transaction, post_bank_transfer
+from app.services.bank_proposal_posting import (
+    post_approved_proposal,
+    reverse_posted_proposal,
+)
 from app.services.bank_classification import build_bank_suggestion
 from app.services.bank_normalization import (
     NORMALIZER_VERSION,
@@ -159,6 +164,26 @@ def _active_proposals_by_transaction(
         BankTransactionProposal.bank_transaction_id.in_(transaction_ids)
     )
     return {proposal.bank_transaction_id: proposal for proposal in proposals.all()}
+
+
+def _latest_proposals_by_transaction(
+    db: Session, transaction_ids: list[int], status: str | None = None
+) -> dict[int, BankTransactionProposal]:
+    if not transaction_ids:
+        return {}
+    q = db.query(BankTransactionProposal).filter(
+        BankTransactionProposal.bank_transaction_id.in_(transaction_ids)
+    )
+    if status:
+        q = q.filter(BankTransactionProposal.status == status)
+    proposals = q.order_by(
+        BankTransactionProposal.bank_transaction_id,
+        BankTransactionProposal.revision.desc(),
+    ).all()
+    result = {}
+    for proposal in proposals:
+        result.setdefault(proposal.bank_transaction_id, proposal)
+    return result
 
 
 def _validate_reference_ids(db: Session, values: dict) -> None:
@@ -433,8 +458,11 @@ def list_bank_review_queue(
         .limit(limit)
         .all()
     )
-    active_by_transaction = _active_proposals_by_transaction(
-        db, [txn.id for txn in rows]
+    transaction_ids = [txn.id for txn in rows]
+    active_by_transaction = (
+        _latest_proposals_by_transaction(db, transaction_ids, status="posted")
+        if status == "posted"
+        else _active_proposals_by_transaction(db, transaction_ids)
     )
     return [
         {
@@ -453,9 +481,12 @@ def get_bank_transaction_review(transaction_id: int, db: Session = Depends(get_d
     txn = db.get(BankTransaction, transaction_id)
     if not txn:
         raise HTTPException(status_code=404, detail="Bank transaction not found")
+    active = _active_proposals_by_transaction(db, [txn.id]).get(txn.id)
+    if active is None:
+        active = _latest_proposals_by_transaction(db, [txn.id]).get(txn.id)
     item = {
         "transaction": txn,
-        "active_proposal": _active_proposals_by_transaction(db, [txn.id]).get(txn.id),
+        "active_proposal": active,
     }
     item["proposal_history"] = (
         db.query(BankTransactionProposal)
@@ -608,6 +639,44 @@ def approve_bank_proposal(proposal_id: int, db: Session = Depends(get_db)):
 
 
 @router.post(
+    "/proposals/{proposal_id}/post",
+    response_model=BankProposalPostingResponse,
+)
+def post_bank_proposal(proposal_id: int, db: Session = Depends(get_db)):
+    """Post one approved proposal through its guarded accounting route."""
+    try:
+        return post_approved_proposal(db, proposal_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.post(
+    "/proposals/{proposal_id}/reverse",
+    response_model=BankProposalPostingResponse,
+)
+def reverse_bank_proposal(
+    proposal_id: int,
+    data: BankProposalReverse,
+    db: Session = Depends(get_db),
+):
+    """Reverse a posted proposal and reopen copied decisions for correction."""
+    try:
+        return reverse_posted_proposal(
+            db,
+            proposal_id,
+            reversal_date=data.reversal_date,
+            actor=_actor(db),
+            note=data.note,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.post(
     "/proposals/{proposal_id}/reject",
     response_model=BankTransactionProposalResponse,
 )
@@ -752,17 +821,31 @@ def post_transaction(
     feed_row = db.get(BankTransaction, transaction_id)
     if not feed_row:
         raise HTTPException(status_code=404, detail="Bank transaction not found")
-    try:
-        return post_bank_transaction(
-            db,
-            feed_row,
-            data.counter_account_id,
-            class_id=data.class_id,
-            description=data.description,
-            reference=data.reference,
+    proposal = (
+        db.query(BankTransactionProposal)
+        .filter(
+            BankTransactionProposal.bank_transaction_id == transaction_id,
+            BankTransactionProposal.status.in_(("approved", "posted")),
         )
+        .first()
+    )
+    if proposal is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Approve a bank review proposal before posting",
+        )
+    if (
+        proposal.counter_account_id != data.counter_account_id
+        or proposal.class_id != data.class_id
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Posting input must match the approved proposal",
+        )
+    try:
+        return post_approved_proposal(db, proposal.id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @router.post("/transfers/post")
@@ -771,16 +854,25 @@ def post_transfer(data: BankTransferPost, db: Session = Depends(get_db)):
     second = db.get(BankTransaction, data.second_transaction_id)
     if not first or not second:
         raise HTTPException(status_code=404, detail="Bank transaction not found")
-    try:
-        return post_bank_transfer(
-            db,
-            first,
-            second,
-            description=data.description,
-            reference=data.reference,
+    proposal = (
+        db.query(BankTransactionProposal)
+        .filter(
+            BankTransactionProposal.bank_transaction_id == data.first_transaction_id,
+            BankTransactionProposal.paired_bank_transaction_id
+            == data.second_transaction_id,
+            BankTransactionProposal.status.in_(("approved", "posted")),
         )
+        .first()
+    )
+    if proposal is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Both transfer rows require mutually approved proposals",
+        )
+    try:
+        return post_approved_proposal(db, proposal.id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 # Reconciliations

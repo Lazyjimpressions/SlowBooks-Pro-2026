@@ -175,6 +175,10 @@ class BankTransactionProposalResponse(BaseModel):
     created_at: datetime
     reviewed_at: Optional[datetime]
     posted_at: Optional[datetime]
+    posted_transaction_id: Optional[int]
+    reversal_transaction_id: Optional[int]
+    reversed_by: Optional[str]
+    reversed_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
 
@@ -200,6 +204,19 @@ class BankProposalBulkApprove(StrictModel):
         if len(set(self.proposal_ids)) != len(self.proposal_ids):
             raise ValueError("proposal_ids must be unique")
         return self
+
+
+class BankProposalReverse(StrictModel):
+    reversal_date: dt_date
+    note: Optional[str] = Field(default=None, max_length=1000)
+
+
+class BankProposalPostingResponse(BaseModel):
+    status: str
+    proposal_ids: list[int]
+    transaction_id: int
+    bank_transaction_ids: list[int]
+    replacement_proposal_ids: list[int] = Field(default_factory=list)
 
 
 class BankCounterpartyAliasCreate(StrictModel):

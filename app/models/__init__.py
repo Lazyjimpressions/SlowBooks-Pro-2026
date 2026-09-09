@@ -1,7 +1,11 @@
 from app.models.accounts import Account
 from app.models.contacts import Customer, Vendor
 from app.models.items import Item
-from app.models.transactions import Transaction, TransactionLine
+from app.models.transactions import (
+    Transaction,
+    TransactionLine,
+    TransactionCounterparty,
+)
 from app.models.invoices import Invoice, InvoiceLine
 from app.models.estimates import Estimate, EstimateLine
 from app.models.payments import Payment, PaymentAllocation
@@ -104,6 +108,7 @@ __all__ = [
     "Item",
     "Transaction",
     "TransactionLine",
+    "TransactionCounterparty",
     "Invoice",
     "InvoiceLine",
     "Estimate",

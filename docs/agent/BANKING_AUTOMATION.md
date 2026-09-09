@@ -31,13 +31,26 @@ amounts, and low-confidence mappings require review by default.
 
 ## Posting endpoints
 
-- `POST /api/banking/transactions/{id}/post` posts one reviewed feed row to a
-  non-bank counter-account and links the resulting journal transaction.
-- `POST /api/banking/transfers/post` accepts two reviewed, equal-and-opposite
-  feed rows from different linked registers and creates one balance-sheet-only
-  journal transaction linked to both.
+- `POST /api/banking/proposals/{id}/post` is the canonical write endpoint. It
+  consumes an approved proposal, validates its guarded route, and retains
+  proposal, class, and counterparty provenance on the resulting transaction.
+- `POST /api/banking/proposals/{id}/reverse` posts a dated reversing journal and
+  opens copied proposal revisions for correction. Reconciled rows are refused.
+- `POST /api/banking/transactions/{id}/post` and `POST
+  /api/banking/transfers/post` remain compatibility endpoints, but they now
+  require input that matches an approved proposal and delegate to the canonical
+  proposal service.
+- A transfer requires mutually approved, equal-and-opposite proposals from
+  different linked registers and creates one balance-sheet-only journal linked
+  to both.
 - Both operations are idempotent. Database uniqueness on the source identity
   prevents concurrent retry requests from creating duplicate journal entries.
+
+Direct bank expenses appear in the Expense module and retain a reviewed vendor
+when one was selected. Direct income and expenses carry an assigned class on
+both the journal header and lines. Customer-payment, bill-payment, and hold
+routes cannot use generic posting; they wait for the appropriate subledger
+application workflow.
 
 ## Rules and AI
 
