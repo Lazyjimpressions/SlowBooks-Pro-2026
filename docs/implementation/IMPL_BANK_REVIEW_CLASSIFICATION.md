@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.6
+**Version:** 1.7
 **Last Updated:** September 9, 2026
-**Status:** Phase 5 complete; Phase 6 controlled rollout is next
+**Status:** Phase 6 controlled rollout in progress
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -358,7 +358,7 @@ and no statement name creates a contact.
 
 **Deliverables:**
 
-- [ ] Run targeted tests, formatting, lint, migration checks, and the full test
+- [x] Run targeted tests, formatting, lint, migration checks, and the full test
   suite in the repository's established order.
 - [ ] Pass Linux CI, dependency audit, Gitleaks, and Docker build checks.
 - [ ] Merge through the fork before rebuilding the macOS application.
@@ -378,6 +378,16 @@ and no statement name creates a contact.
 - Direct postings retain payor/payee, account, and personal/business decisions.
 - No AR/AP settlement is duplicated as direct income or expense.
 - Reimport and repost retries do not change balances or create duplicates.
+
+**In progress:** September 9, 2026. The rollout branch updates WeasyPrint from
+69.0 to 70.0 for CVE-2026-55073 and adapts the data-only PDF URL fetcher to the
+new `URLFetcher` API. The live dependency audit is clean; 74 focused
+banking/PDF tests, Black, Ruff, and the two banking migrations' isolated
+upgrade/downgrade round trip pass. The local full suite reports 1,985 passed
+and 8 skipped with only the previously documented native macOS OCR expectation
+mismatch. A full historical downgrade separately exposes a pre-existing
+SQLite defect in the Tier 3 HR downgrade; it does not affect forward upgrade
+to head or the Phase 4/5 banking migration round trip.
 
 ---
 

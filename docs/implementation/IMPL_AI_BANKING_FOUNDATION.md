@@ -3,7 +3,7 @@
 **Version:** 1.3
 **Last Updated:** September 9, 2026
 **Status:** Bank review classification Phase 5 complete; controlled rollout is
-next
+in progress
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
