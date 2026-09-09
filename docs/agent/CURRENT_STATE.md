@@ -10,18 +10,22 @@
 - The public fork carries sanitized, generally useful source changes and PRs.
 - The private `Lazyjimpressions/slowbooks-ai-ops` repository carries internal
   AI policy, business mappings, research, and deployment knowledge.
-- Local `main` tracks `upstream/main`; feature branches push to `origin`.
+- Local `main` is the fork integration branch and is configured to track
+  `upstream/main` so upstream drift stays visible. At this audit it matches
+  `origin/main`, is 29 commits ahead of upstream, and upstream has no unique
+  commits. Feature branches push to `origin`.
 
 ## Banking observations
 
-- v2.9.3 allows new bank registers to link to asset or liability COA accounts.
+- Upstream v2.9.4 allows new bank registers to link to asset or liability COA
+  accounts.
 - CSV supports Bank of America detail exports (including their summary
   preamble), Chase checking, Chase credit card, and two PayPal layouts.
 - OFX and SimpleFIN share the FITID-based import path.
 - Bank-feed rows can be posted atomically and idempotently to a counter-account;
   equal-and-opposite rows can be paired as one balance-sheet transfer.
-- Import deduplication exists, but the v2.9.3 baseline does not move
-  `BankAccount.balance` for imported rows.
+- The fork moves `BankAccount.balance` exactly once for newly imported rows,
+  preserves explicit opening balances, and leaves retries balance-neutral.
 - Bank Rules can propose intent, counter-account, existing customer/vendor,
   class, and payer/payee using raw or normalized text with optional register,
   direction, and amount scope. They never approve or post.
@@ -37,15 +41,17 @@
 
 Bank review classification Phases 0-6 are complete. PR #16 merged the release
 dependency remediation, and its exact merge commit was built and validated on
-macOS before controlled installation. Future banking work remains separately
-scoped in the roadmap; do not combine merchant settlement or unapplied-payment
-application with the completed banking-review foundation.
+macOS before controlled installation. PR #18 recorded the live acceptance and
+passed the full fork CI suite before merge. No feature branch is currently
+active. Future banking work remains separately scoped in the roadmap; do not
+combine merchant settlement or unapplied-payment application with the
+completed banking-review foundation.
 
 ## Verification status
 
 - Merged PRs #14 and #15 passed Linux pytest, lint, Docker build, and secret
   scanning. Their dependency-audit job identified CVE-2026-55073 in
-  `weasyprint==69.0`; Phase 6 updates it to 70.0 and adapts the restricted PDF
+  `weasyprint==69.0`; Phase 6 updated it to 70.0 and adapted the restricted PDF
   URL fetcher to the new API.
 - The Phase 6 local dependency audit is clean. Focused banking/PDF tests pass
   (74 passed), formatting and lint pass, and the two banking migrations round
@@ -75,6 +81,17 @@ application with the completed banking-review foundation.
   debit/credit audit activity.
 - The original six register balances and every existing BoA Savings row,
   posting link, and reconciliation flag remained unchanged.
+- No credential, company database, bank export, or other private financial
+  artifact is tracked in the public fork; PR #18's Gitleaks check passed.
+
+## Open work
+
+- Issue #4: reconcile OFX/QFX statement balance metadata and opening balances.
+- Issue #5: filter Schedule C reporting by business class.
+- Issue #3: expose bank-register relinking and chart subaccounts in the UI.
+- Issue #17: repair the legacy Tier 3 HR SQLite downgrade.
+- Controlled automation, AR/AP application, and merchant settlement require
+  separate implementation plans and approval-policy decisions.
 
 ## Installed test app
 

@@ -55,7 +55,9 @@ Tax calculations are approximate — verify with a tax professional. Full module
 - **Check Printing** — Generate check PDFs in standard 3-per-page format (stub/stub/check) with payee, amount in words, memo, and signature line
 - **Bank Reconciliation** — Full workflow: enter statement balance, toggle cleared items, validate difference = $0, complete
 - **OFX/QFX and bank CSV import** — Import OFX/QFX plus Bank of America detail, Chase checking/credit, and PayPal CSV exports with retry-safe dedup, preview before import, and auto-match by amount/date
-- **Bank-feed posting** — Post reviewed feed rows atomically to the ledger, or pair opposite rows as a single balance-sheet transfer; repeated requests cannot duplicate the posting
+- **Bank review** — Preserve imported evidence while versioned proposals record intent, normalized counterparty, existing customer/vendor or text-only contact, counter-account, class decision, confidence, rationale, and reviewer attribution
+- **Bank Rules** — Propose reviewed classifications from raw or normalized text with optional register, direction, and amount scope; rules never approve, post, or silently create contacts
+- **Bank-feed posting** — Post approved direct activity atomically to the ledger, or pair opposite rows as a single balance-sheet transfer; repeated requests cannot duplicate the posting, corrections use reversal history, and AR/AP candidates remain held for their subledger workflows
 
 ## Reports & Tax
 - **QuickBooks-style period selector** — All reports support preset periods (This Month, This Quarter, This/Last Year, Year to Date, Custom Date) with live refresh
@@ -490,6 +492,18 @@ All payroll, HR, tax-form, and self-service portal endpoints are documented with
 | Endpoint | Methods | Description |
 |----------|---------|-------------|
 | `/api/banking/check-register` | GET | Check register with running balance |
+| `/api/banking/accounts` | GET, POST | List or create bank and card registers linked to chart accounts |
+| `/api/banking/accounts/{id}` | GET, PUT | Read or edit a register and its chart-account link |
+| `/api/banking/transactions` | GET, POST | List or create register evidence rows |
+| `/api/banking/review` | GET | List unresolved, proposed, approved, or posted bank rows |
+| `/api/banking/transactions/{id}/review` | GET | Read a row, active proposal, and proposal history |
+| `/api/banking/transactions/{id}/suggest` | POST | Create a deterministic, non-posting proposal |
+| `/api/banking/transactions/{id}/proposals` | POST | Create a human or agent proposal without posting |
+| `/api/banking/proposals/{id}` | PUT | Supersede a reviewable proposal with a corrected revision |
+| `/api/banking/proposals/{id}/approve` | POST | Approve a complete proposal without posting |
+| `/api/banking/proposals/{id}/post` | POST | Idempotently post an approved guarded route |
+| `/api/banking/proposals/{id}/reverse` | POST | Reverse a posted proposal and reopen copied decisions |
+| `/api/banking/counterparty-aliases` | GET, POST | Manage reviewed bank-text aliases |
 | `/api/deposits/pending` | GET | Pending deposits in Undeposited Funds |
 | `/api/deposits` | GET, POST | Create deposits (move funds to bank) |
 | `/api/cc-charges` | GET, POST | Credit card charge entry |

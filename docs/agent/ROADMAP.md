@@ -34,7 +34,14 @@ policy and accounting operations.
 
 ## Controlled automation
 
-- Store proposal confidence, rationale, model, policy, and approver.
+Implemented baseline:
+
+- Store proposal confidence, rationale, source, creator, reviewer, and approval
+  timestamps.
+
+Remaining:
+
+- Store model identity and the versioned policy decision used for automation.
 - Auto-post only within explicit account, amount, and confidence policies.
 - Maintain an exception queue and reconciliation controls.
 - Build reporting from posted journal data and disclose unposted activity.

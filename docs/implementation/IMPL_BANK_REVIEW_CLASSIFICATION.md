@@ -455,4 +455,5 @@ tests/
 
 > I'm continuing Bank Review Classification. Read
 > `docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md`, `AGENTS.md`, and
-> `docs/agent/START_HERE.md`, then begin from the first incomplete phase.
+> `docs/agent/START_HERE.md`. This plan is complete; select the next pending
+> item from `docs/agent/ROADMAP.md` and create a separate implementation plan.

@@ -18,7 +18,9 @@ requests.
 
 ## Non-negotiable rules
 
-- Keep `main` aligned with `upstream/main`; develop on feature branches.
+- Keep `main` based on and deliberately reconciled with `upstream/main`; it may
+  remain ahead with reviewed fork commits. Develop on feature branches and
+  never discard fork work merely to make the refs identical.
 - Preserve upstream compatibility and keep changes small enough to propose
   upstream unless a decision record explicitly marks them private-specific.
 - Never commit real company databases, bank exports, customer/vendor data,

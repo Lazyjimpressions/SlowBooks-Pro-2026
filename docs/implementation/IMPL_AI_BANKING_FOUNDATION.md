@@ -1,8 +1,9 @@
 # Implementation Plan: AI Banking Foundation
 
-**Version:** 1.4
+**Version:** 1.5
 **Last Updated:** September 9, 2026
-**Status:** Bank review classification Phases 0-6 complete
+**Status:** Initial banking foundation complete; controlled automation and
+subledger application remain future work
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
@@ -64,7 +65,7 @@ Gitleaks, and Docker build checks.
 
 ---
 
-## Phase 2 — Posting and review API 🔲
+## Phase 2 — Posting and review API 🟩
 
 **Deliverables:**
 
@@ -75,7 +76,7 @@ Gitleaks, and Docker build checks.
 
 ---
 
-## Phase 3 — Contacts and AI policy 🔲
+## Phase 3 — Contacts and reviewed proposal policy 🟩
 
 Detailed execution is tracked in
 [`IMPL_BANK_REVIEW_CLASSIFICATION.md`](IMPL_BANK_REVIEW_CLASSIFICATION.md).
@@ -93,11 +94,6 @@ Detailed execution is tracked in
 - [x] Preserve raw descriptions and store normalized matching fields separately
 - [x] Post approved direct income, expense, balance-sheet activity, and
   transfers through guarded services
-- [ ] Apply held Customer Payment and Bill Payment candidates through their
-  authoritative subledger services
-- [ ] Confidence and automation policies
-- [ ] Exception queue and reporting disclosure
-
 For the initial implementation, `Personal` may be configured as the visible
 default class and `Sch C - Lazyj` is the first business class. A pure
 balance-sheet transaction uses `not_applicable`; a row without an approved
@@ -126,6 +122,9 @@ restoring net account and reporting balances.
 
 **Ideas recorded for later evaluation:**
 
+- [ ] Store model identity and versioned approval-policy decisions
+- [ ] Add bounded confidence/amount policies and an exception queue
+- [ ] Disclose unresolved and approved-but-unposted activity in reporting
 - [ ] Apply an existing unapplied customer payment to one or more invoices
   without posting cash again
 - [ ] Apply an existing vendor prepayment to one or more bills without posting
@@ -158,4 +157,5 @@ app/services/bank_balance.py
 
 > I'm continuing work on AI Banking Foundation. Read
 > `docs/implementation/IMPL_AI_BANKING_FOUNDATION.md`, `AGENTS.md`, and
-> `docs/agent/START_HERE.md` to understand the current state.
+> `docs/agent/START_HERE.md`, then select one pending roadmap item and create a
+> focused implementation plan before changing behavior.
