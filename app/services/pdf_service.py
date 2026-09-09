@@ -7,7 +7,7 @@ import mimetypes
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML, default_url_fetcher
+from weasyprint import HTML, URLFetcher
 
 from app.services import storage
 
@@ -65,8 +65,8 @@ def _company_logo_data_uri(company_settings: dict) -> str:
     return f"data:{mime};base64,{encoded}"
 
 
-def _safe_url_fetcher(url, timeout=10, ssl_context=None):
-    """Restrict WeasyPrint to data: URIs only.
+def _safe_url_fetcher() -> URLFetcher:
+    """Build a WeasyPrint fetcher restricted to data: URIs.
 
     Without this, user-controlled HTML (e.g. invoice notes, customer name
     fields) could embed <img src="file:///etc/passwd"> and have the server
@@ -74,9 +74,7 @@ def _safe_url_fetcher(url, timeout=10, ssl_context=None):
     need no external fetches; if that changes, whitelist specific https
     origins here rather than opening up file:// broadly.
     """
-    if url.startswith("data:"):
-        return default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
-    raise ValueError(f"URL scheme not allowed in PDF templates: {url!r}")
+    return URLFetcher(allowed_protocols=("data",))
 
 
 def render_pdf(html_str: str) -> bytes:
@@ -86,7 +84,7 @@ def render_pdf(html_str: str) -> bytes:
     a W-2 or an invoice readable to a blind user. Falls back to a plain PDF
     if the installed WeasyPrint can't do the variant, so a render never
     fails on an environment quirk."""
-    doc = HTML(string=html_str, url_fetcher=_safe_url_fetcher)
+    doc = HTML(string=html_str, url_fetcher=_safe_url_fetcher())
     try:
         return doc.write_pdf(pdf_variant="pdf/ua-1")
     except Exception:  # pragma: no cover - older WeasyPrint / font edge cases

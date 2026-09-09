@@ -35,17 +35,25 @@
 
 ## Active work
 
-PR #15 carries Phase 5 of
-`docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md` on the Phase 4 baseline
-merged by PR #14. Phase 6 will package, back up the test company, and validate
-these banking phases in one controlled macOS build.
+PRs #14 and #15 merged Phases 4 and 5. The
+`chore/phase6-controlled-rollout` branch is preparing Phase 6 by remediating
+the WeasyPrint dependency advisory, running the release gates, and producing
+one exact-commit macOS build before live-test validation.
 
 ## Verification status
 
-- Merged PR #14 passed Linux pytest, lint, Docker build, and secret scanning.
-- Its dependency-audit job fails on the unchanged upstream
-  `weasyprint==69.0` pin; the published remediation is 70.0. Resolve and test
-  that dependency separately before Phase 6 claims an all-green gate.
+- Merged PRs #14 and #15 passed Linux pytest, lint, Docker build, and secret
+  scanning. Their dependency-audit job identified CVE-2026-55073 in
+  `weasyprint==69.0`; Phase 6 updates it to 70.0 and adapts the restricted PDF
+  URL fetcher to the new API.
+- The Phase 6 local dependency audit is clean. Focused banking/PDF tests pass
+  (74 passed), formatting and lint pass, and the two banking migrations round
+  trip against an isolated SQLite database.
+- The Phase 6 local full suite reports 1,985 passed and 8 skipped, plus the
+  known macOS OCR engine-selection mismatch described below.
+- A full downgrade to Alembic base exposes a pre-existing SQLite defect in the
+  legacy Tier 3 HR downgrade at `b8c9d0e1f2a3`; current databases and the new
+  banking migrations upgrade successfully to head.
 - The local macOS suite has one known OCR engine-selection mismatch because
   the installed native OCR path can process the synthetic PDF when the test
   expects the no-Poppler path to reject it. Linux CI is authoritative for that
