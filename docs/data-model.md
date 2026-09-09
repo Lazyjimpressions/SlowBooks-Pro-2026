@@ -1,8 +1,9 @@
 # Data Model
 
-Schema reference for the Slowbooks PostgreSQL database. 55 tables on
-a double-entry accounting foundation. For migration history, see the
-files under `migrations/versions/`; for model code, see `app/models/`.
+Schema reference for the Slowbooks database on a double-entry accounting
+foundation. The schema evolves frequently; for the authoritative table count
+and migration history, inspect `Base.metadata` and `migrations/versions/`. For
+model code, see `app/models/`.
 
 | Table | Purpose |
 |-------|---------|
@@ -18,8 +19,11 @@ files under `migrations/versions/`; for model code, see `app/models/`.
 | `payment_allocations` | Maps payments to invoices (many-to-many) |
 | `transactions` | Journal entry headers |
 | `transaction_lines` | Journal entry splits (debit OR credit) |
+| `transaction_counterparties` | Posted payer/payee provenance linked to a proposal and optional customer or vendor |
 | `bank_accounts` | Bank accounts linked to COA |
 | `bank_transactions` | Bank register entries (with OFX import fields) |
+| `bank_transaction_proposals` | Versioned bank-review intent, contact, account, class, confidence, approval, posting, and reversal decisions |
+| `bank_counterparty_aliases` | Reviewed raw/normalized bank-text aliases, optionally scoped by register and direction |
 | `reconciliations` | Bank reconciliation sessions |
 | `settings` | Company settings key-value store |
 | `audit_log` | Automatic change tracking for all entities |
