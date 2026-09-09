@@ -6,7 +6,9 @@
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -14,6 +16,7 @@ from app.routes._helpers import clamp_pagination
 from app.models.banking import (
     BankAccount,
     BankTransaction,
+    BankTransactionProposal,
     Reconciliation,
     ReconciliationStatus,
 )
@@ -24,6 +27,10 @@ from app.schemas.banking import (
     BankTransactionCreate,
     BankTransactionResponse,
     BankTransactionPost,
+    BankTransactionProposalCreate,
+    BankTransactionProposalResponse,
+    BankReviewQueueItem,
+    BankTransactionReviewResponse,
     BankTransferPost,
     ReconciliationCreate,
     ReconciliationResponse,
@@ -104,6 +111,188 @@ def create_bank_transaction(data: BankTransactionCreate, db: Session = Depends(g
     db.commit()
     db.refresh(txn)
     return txn
+
+
+ACTIVE_PROPOSAL_STATUSES = ("proposed", "approved")
+
+
+def _active_proposal_query(db: Session):
+    return db.query(BankTransactionProposal).filter(
+        BankTransactionProposal.status.in_(ACTIVE_PROPOSAL_STATUSES)
+    )
+
+
+def _active_proposals_by_transaction(
+    db: Session, transaction_ids: list[int]
+) -> dict[int, BankTransactionProposal]:
+    if not transaction_ids:
+        return {}
+    proposals = _active_proposal_query(db).filter(
+        BankTransactionProposal.bank_transaction_id.in_(transaction_ids)
+    )
+    return {proposal.bank_transaction_id: proposal for proposal in proposals.all()}
+
+
+@router.get("/review", response_model=list[BankReviewQueueItem])
+def list_bank_review_queue(
+    status: str = Query(
+        "unresolved",
+        pattern="^(unresolved|proposed|approved|posted|all)$",
+    ),
+    bank_account_id: int = None,
+    skip: int = 0,
+    limit: int = 500,
+    db: Session = Depends(get_db),
+):
+    """List imported rows by review state without changing import behavior."""
+    skip, limit = clamp_pagination(skip, limit)
+    q = db.query(BankTransaction)
+    if bank_account_id:
+        q = q.filter(BankTransaction.bank_account_id == bank_account_id)
+
+    if status == "unresolved":
+        active_exists = (
+            db.query(BankTransactionProposal.id)
+            .filter(
+                BankTransactionProposal.bank_transaction_id == BankTransaction.id,
+                BankTransactionProposal.status.in_(ACTIVE_PROPOSAL_STATUSES),
+            )
+            .exists()
+        )
+        q = q.filter(BankTransaction.transaction_id.is_(None), ~active_exists)
+    elif status in ACTIVE_PROPOSAL_STATUSES:
+        q = q.join(
+            BankTransactionProposal,
+            BankTransactionProposal.bank_transaction_id == BankTransaction.id,
+        ).filter(BankTransactionProposal.status == status)
+    elif status == "posted":
+        q = q.filter(BankTransaction.transaction_id.is_not(None))
+
+    rows = (
+        q.order_by(BankTransaction.date.desc(), BankTransaction.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    active_by_transaction = _active_proposals_by_transaction(
+        db, [txn.id for txn in rows]
+    )
+    return [
+        {
+            "transaction": txn,
+            "active_proposal": active_by_transaction.get(txn.id),
+        }
+        for txn in rows
+    ]
+
+
+@router.get(
+    "/transactions/{transaction_id}/review",
+    response_model=BankTransactionReviewResponse,
+)
+def get_bank_transaction_review(transaction_id: int, db: Session = Depends(get_db)):
+    txn = db.get(BankTransaction, transaction_id)
+    if not txn:
+        raise HTTPException(status_code=404, detail="Bank transaction not found")
+    item = {
+        "transaction": txn,
+        "active_proposal": _active_proposals_by_transaction(db, [txn.id]).get(txn.id),
+    }
+    item["proposal_history"] = (
+        db.query(BankTransactionProposal)
+        .filter(BankTransactionProposal.bank_transaction_id == transaction_id)
+        .order_by(BankTransactionProposal.revision.desc())
+        .all()
+    )
+    return item
+
+
+@router.post(
+    "/transactions/{transaction_id}/proposals",
+    response_model=BankTransactionProposalResponse,
+    status_code=201,
+)
+def create_bank_transaction_proposal(
+    transaction_id: int,
+    data: BankTransactionProposalCreate,
+    db: Session = Depends(get_db),
+):
+    """Create a review proposal. This endpoint never posts to the ledger."""
+    txn = db.get(BankTransaction, transaction_id)
+    if not txn:
+        raise HTTPException(status_code=404, detail="Bank transaction not found")
+    if txn.transaction_id is not None:
+        raise HTTPException(
+            status_code=409, detail="Bank transaction is already posted"
+        )
+    if (
+        _active_proposal_query(db)
+        .filter(BankTransactionProposal.bank_transaction_id == transaction_id)
+        .first()
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Bank transaction already has an active proposal",
+        )
+
+    reference_models = {
+        "customer_id": "Customer",
+        "vendor_id": "Vendor",
+        "counter_account_id": "Account",
+        "class_id": "TxnClass",
+        "invoice_id": "Invoice",
+        "bill_id": "Bill",
+        "paired_bank_transaction_id": "BankTransaction",
+    }
+    from app.models.accounts import Account
+    from app.models.bills import Bill
+    from app.models.classes import TxnClass
+    from app.models.contacts import Customer, Vendor
+    from app.models.invoices import Invoice
+
+    models = {
+        "Customer": Customer,
+        "Vendor": Vendor,
+        "Account": Account,
+        "TxnClass": TxnClass,
+        "Invoice": Invoice,
+        "Bill": Bill,
+        "BankTransaction": BankTransaction,
+    }
+    values = data.model_dump()
+    for field, model_name in reference_models.items():
+        object_id = values.get(field)
+        if object_id is not None and db.get(models[model_name], object_id) is None:
+            raise HTTPException(status_code=400, detail=f"Invalid {field}")
+    if values.get("paired_bank_transaction_id") == transaction_id:
+        raise HTTPException(
+            status_code=400, detail="A bank transaction cannot be paired with itself"
+        )
+
+    revision = (
+        db.query(func.max(BankTransactionProposal.revision))
+        .filter(BankTransactionProposal.bank_transaction_id == transaction_id)
+        .scalar()
+        or 0
+    ) + 1
+    proposal = BankTransactionProposal(
+        bank_transaction_id=transaction_id,
+        revision=revision,
+        status="proposed",
+        created_by=db.info.get("acting_username") or "system",
+        **values,
+    )
+    db.add(proposal)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A concurrent proposal already became active; reload and retry",
+        )
+    db.refresh(proposal)
+    return proposal
 
 
 @router.post("/transactions/{transaction_id}/post")

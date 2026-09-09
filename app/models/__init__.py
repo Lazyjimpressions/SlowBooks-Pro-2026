@@ -5,7 +5,12 @@ from app.models.transactions import Transaction, TransactionLine
 from app.models.invoices import Invoice, InvoiceLine
 from app.models.estimates import Estimate, EstimateLine
 from app.models.payments import Payment, PaymentAllocation
-from app.models.banking import BankAccount, BankTransaction, Reconciliation
+from app.models.banking import (
+    BankAccount,
+    BankTransaction,
+    BankTransactionProposal,
+    Reconciliation,
+)
 from app.models.settings import Settings
 from app.models.classes import TxnClass  # noqa: F401 — registers the table
 from app.models.jobs import Job  # noqa: F401 — registers the table
@@ -106,6 +111,7 @@ __all__ = [
     "PaymentAllocation",
     "BankAccount",
     "BankTransaction",
+    "BankTransactionProposal",
     "Reconciliation",
     "Settings",
     # Phase 1

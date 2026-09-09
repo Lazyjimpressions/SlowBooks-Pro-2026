@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.1
-**Last Updated:** September 8, 2026
-**Status:** Phase 1 - Proposal persistence and read API
+**Version:** 1.2
+**Last Updated:** September 9, 2026
+**Status:** Phase 2 - Deterministic normalization and suggestions
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -136,19 +136,19 @@ changed during this phase.
 
 ---
 
-## Phase 1 — Proposal persistence and read API 🔲
+## Phase 1 — Proposal persistence and read API 🟩
 
 **Deliverables:**
 
-- [ ] Add a migration and model for versioned bank-review proposals.
-- [ ] Store bank-row ID, status, intent, normalized counterparty, contact role,
+- [x] Add a migration and model for versioned bank-review proposals.
+- [x] Store bank-row ID, status, intent, normalized counterparty, contact role,
   optional customer/vendor, counter-account, class resolution/class, source,
   confidence, rationale, normalizer version, and review attribution.
-- [ ] Enforce one active proposal per bank row and customer/vendor exclusivity.
-- [ ] Add unresolved and review-queue filters without changing existing import
+- [x] Enforce one active proposal per bank row and customer/vendor exclusivity.
+- [x] Add unresolved and review-queue filters without changing existing import
   behavior.
-- [ ] Add endpoints to read a row with its active proposal and proposal history.
-- [ ] Keep proposal creation non-posting.
+- [x] Add endpoints to read a row with its active proposal and proposal history.
+- [x] Keep proposal creation non-posting.
 
 **Suggested endpoints:**
 
@@ -160,11 +160,18 @@ POST /api/banking/transactions/{id}/proposals
 
 **Tests:**
 
-- [ ] Schema constraints and migration upgrade/downgrade
-- [ ] One-active-proposal concurrency behavior
-- [ ] Personal/no-class versus unresolved distinction
-- [ ] Customer/vendor exclusivity
-- [ ] Read-only proposal creation has no GL or register-balance effect
+- [x] Schema constraints and migration upgrade/downgrade
+- [x] One-active-proposal concurrency behavior
+- [x] Personal/no-class versus unresolved distinction
+- [x] Customer/vendor exclusivity
+- [x] Read-only proposal creation has no GL or register-balance effect
+
+**Completed:** September 9, 2026. Migration `f8a9b0c1d2e3` adds the versioned
+proposal table and database constraints. `GET /api/banking/review` accepts
+`unresolved`, `proposed`, `approved`, `posted`, or `all`; `unresolved` means an
+unposted bank row with no active proposal. Proposal creation assigns the next
+revision and an actor snapshot but intentionally creates no journal entry and
+does not alter a register balance.
 
 ---
 
