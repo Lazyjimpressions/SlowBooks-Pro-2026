@@ -44,3 +44,22 @@ amounts, and low-confidence mappings require review by default.
 Rules are durable deterministic memory, not a substitute for first-time
 reasoning. AI handles unseen or ambiguous rows. An approved AI mapping may
 offer to create a narrowly scoped rule for future occurrences.
+
+## Classification contract
+
+Before a bank row can post, its approved proposal should identify:
+
+- transaction intent, such as expense, direct income, customer payment, bill
+  payment, transfer, owner activity, loan, or investment;
+- counter-account or existing document/payment match;
+- contact role and existing customer/vendor when applicable;
+- class, with an explicit personal/no-class decision distinct from unresolved;
+- confidence, rationale, and the rule or human approval that authorized it.
+
+The imported payee and description remain immutable evidence. Clean display
+names, aliases, and normalized counterparties are separate derived data.
+
+When an existing invoice, bill, payment, expense, or deposit is involved, the
+banking workflow must call or link to that domain workflow. It must not create a
+generic journal entry that duplicates revenue, expense, receivables, payables,
+or cash.
