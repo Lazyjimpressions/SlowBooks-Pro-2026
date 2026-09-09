@@ -12,8 +12,8 @@
   AI policy, business mappings, research, and deployment knowledge.
 - Local `main` is the fork integration branch and is configured to track
   `upstream/main` so upstream drift stays visible. At this audit it matches
-  `origin/main`, is 29 commits ahead of upstream, and upstream has no unique
-  commits. Feature branches push to `origin`.
+  `origin/main`, contains reviewed fork commits ahead of upstream, and upstream
+  has no unique commits. Feature branches push to `origin`.
 
 ## Banking observations
 
