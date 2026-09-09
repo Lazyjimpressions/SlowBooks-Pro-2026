@@ -172,7 +172,7 @@ capability.
 ## Proposal lifecycle
 
 ```text
-proposed -> approved -> posted
+proposed -> approved -> posted -> reversed -> replacement proposal
     |           |
     |           +-> superseded (before posting only)
     +-> rejected
@@ -183,7 +183,7 @@ proposed -> approved -> posted
 - `approved` is complete and eligible for its configured posting route.
 - A posting failure leaves it approved and retryable.
 - `posted` requires the bank row's ledger link to exist.
-- `rejected` and `superseded` are historical terminal states.
+- `rejected`, `superseded`, and `reversed` are historical terminal states.
 - A posted correction uses reversal and a replacement proposal; the original
   proposal and journal remain in the audit trail.
 

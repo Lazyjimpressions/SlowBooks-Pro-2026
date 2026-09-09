@@ -1,9 +1,9 @@
 # Implementation Plan: AI Banking Foundation
 
-**Version:** 1.1
-**Last Updated:** September 8, 2026
-**Status:** Bank review classification Phase 3 complete; approved-proposal
-posting and reversal are next
+**Version:** 1.2
+**Last Updated:** September 9, 2026
+**Status:** Bank review classification Phase 4 complete; expanded Bank Rules
+are next
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
@@ -72,8 +72,7 @@ Gitleaks, and Docker build checks.
 - [x] Proposal and review records
 - [x] Idempotent domain posting endpoint
 - [x] Bank-row-to-journal linkage
-- [ ] Transfer matching and reversal workflow (exact reviewed pairs can post
-  and deterministic matching can propose pairs; approval and reversal remain)
+- [x] Transfer matching and reversal workflow
 
 ---
 
@@ -89,12 +88,14 @@ Detailed execution is tracked in
 - [x] Required review fields: transaction intent, counter-account, contact
   role/contact, class, confidence, and rationale
 - [x] Vendor/customer suggestions
-- [ ] Approved contact links retained on posted ledger transactions
+- [x] Approved contact links retained on posted ledger transactions
 - [ ] Bank Rule contact, class, counter-account, and transaction-intent
   application
 - [x] Preserve raw descriptions and store normalized matching fields separately
-- [ ] Post approved rows through the appropriate Expense, Customer Payment,
-  Bill Payment, Deposit, or Transfer service
+- [x] Post approved direct income, expense, balance-sheet activity, and
+  transfers through guarded services
+- [ ] Apply held Customer Payment and Bill Payment candidates through their
+  authoritative subledger services
 - [ ] Confidence and automation policies
 - [ ] Exception queue and reporting disclosure
 

@@ -49,6 +49,9 @@ def post_bank_transaction(
     class_id: int | None = None,
     description: str | None = None,
     reference: str | None = None,
+    source_type: str = "bank_feed",
+    source_id: int | None = None,
+    commit: bool = True,
 ) -> dict:
     """Post one feed row against a non-bank counter-account exactly once."""
     existing = _existing_result([feed_row])
@@ -104,14 +107,20 @@ def post_bank_transaction(
                 "description": memo,
             },
         ],
-        source_type="bank_feed",
-        source_id=feed_row.id,
+        source_type=source_type,
+        source_id=feed_row.id if source_id is None else source_id,
         reference=reference or feed_row.import_id or "",
         class_id=class_id,
     )
     feed_row.transaction_id = txn.id
     feed_row.category_account_id = counter.id
     feed_row.match_status = "manual"
+    if not commit:
+        return {
+            "status": "posted",
+            "transaction_id": txn.id,
+            "bank_transaction_ids": [feed_row.id],
+        }
     try:
         db.commit()
     except IntegrityError:
@@ -119,8 +128,9 @@ def post_bank_transaction(
         winner = (
             db.query(Transaction)
             .filter(
-                Transaction.source_type == "bank_feed",
-                Transaction.source_id == feed_row.id,
+                Transaction.source_type == source_type,
+                Transaction.source_id
+                == (feed_row.id if source_id is None else source_id),
             )
             .first()
         )
@@ -145,6 +155,9 @@ def post_bank_transfer(
     *,
     description: str | None = None,
     reference: str | None = None,
+    source_type: str = "bank_transfer",
+    source_id: int | None = None,
+    commit: bool = True,
 ) -> dict:
     """Post two opposite feed rows as one balance-sheet transfer."""
     if first.id == second.id:
@@ -188,8 +201,8 @@ def post_bank_transfer(
                 "description": memo,
             },
         ],
-        source_type="bank_transfer",
-        source_id=outgoing.id,
+        source_type=source_type,
+        source_id=outgoing.id if source_id is None else source_id,
         reference=reference or outgoing.import_id or "",
     )
     outgoing.transaction_id = txn.id
@@ -198,6 +211,12 @@ def post_bank_transfer(
     incoming.category_account_id = outgoing_account.id
     outgoing.match_status = "manual"
     incoming.match_status = "manual"
+    if not commit:
+        return {
+            "status": "posted",
+            "transaction_id": txn.id,
+            "bank_transaction_ids": [first.id, second.id],
+        }
     try:
         db.commit()
     except IntegrityError:
@@ -205,8 +224,9 @@ def post_bank_transfer(
         winner = (
             db.query(Transaction)
             .filter(
-                Transaction.source_type == "bank_transfer",
-                Transaction.source_id == outgoing.id,
+                Transaction.source_type == source_type,
+                Transaction.source_id
+                == (outgoing.id if source_id is None else source_id),
             )
             .first()
         )

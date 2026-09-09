@@ -104,6 +104,16 @@
         const components = (p.confidence_components || []).map(c =>
             `<li><strong>${escapeHtml(c.name.replaceAll('_', ' '))}</strong>: ${escapeHtml(c.detail)}</li>`).join('');
 
+        const actions = p.status === 'posted'
+            ? `<button type="button" class="btn btn-danger" data-bank-review-reverse="${p.id}">Reverse &amp; Reopen</button>`
+            : p.status === 'approved'
+                ? `<button type="button" class="btn btn-secondary" data-bank-review-supersede="${p.id}">Supersede</button>
+                   <button type="submit" class="btn btn-secondary">Save Correction</button>
+                   <button type="button" class="btn btn-primary" data-bank-review-post="${p.id}">Post Approved Proposal</button>`
+                : `<button type="button" class="btn btn-secondary" data-bank-review-reject="${p.id}">Reject</button>
+                   <button type="button" class="btn btn-secondary" data-bank-review-supersede="${p.id}">Supersede</button>
+                   <button type="submit" class="btn btn-secondary">Save Correction</button>
+                   <button type="button" class="btn btn-primary" data-bank-review-approve="${p.id}">Save &amp; Approve</button>`;
         openModal('Review Imported Transaction', `
             <div style="padding:10px;border:1px solid var(--border);margin-bottom:12px;background:var(--surface-alt,transparent);">
                 <strong>Imported evidence — read only</strong><br>${formatDate(t.date)} · ${formatCurrency(t.amount)}<br>
@@ -136,12 +146,7 @@
                 <div style="font-size:11px;margin-top:10px;"><strong>Suggestion source:</strong> ${escapeHtml(p.proposal_source)} · confidence ${p.confidence === null ? 'not scored' : Math.round(Number(p.confidence) * 100) + '%'}
                     <br>${escapeHtml(p.rationale || '')}<ul>${components}</ul></div>
                 <details style="margin-top:8px;"><summary>Proposal history</summary><ul>${history}</ul></details>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" data-bank-review-reject="${p.id}">Reject</button>
-                    <button type="button" class="btn btn-secondary" data-bank-review-supersede="${p.id}">Supersede</button>
-                    <button type="submit" class="btn btn-secondary">Save Correction</button>
-                    <button type="button" class="btn btn-primary" data-bank-review-approve="${p.id}">Save &amp; Approve</button>
-                </div>
+                <div class="form-actions">${actions}</div>
             </form>`);
         BankingPage.syncReviewContact(p.counterparty_resolution);
         BankingPage.syncReviewClass(p.class_resolution);
@@ -229,6 +234,33 @@
         } catch (err) { toast(err.message, 'error'); }
     };
 
+    BankingPage.postApprovedReview = async function (proposalId) {
+        if (!confirm('Post this approved proposal to the ledger?')) return;
+        try {
+            const result = await API.post(`/banking/proposals/${proposalId}/post`, {});
+            toast(`Posted journal transaction ${result.transaction_id}`);
+            closeModal();
+            const f = BankingPage._reviewFilter || {};
+            BankingPage.renderReviewQueue(f.bankAccountId || null, 'approved');
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
+    BankingPage.reversePostedReview = async function (proposalId) {
+        const reversalDate = prompt('Reversal date (YYYY-MM-DD)', todayISO());
+        if (!reversalDate) return;
+        const note = prompt('Reason for reversal and correction') || '';
+        if (!confirm('Post a reversing journal entry and reopen this row for review?')) return;
+        try {
+            const result = await API.post(`/banking/proposals/${proposalId}/reverse`, {
+                reversal_date: reversalDate, note,
+            });
+            toast(`Reversed and reopened ${result.replacement_proposal_ids.length} proposal(s)`);
+            closeModal();
+            const f = BankingPage._reviewFilter || {};
+            BankingPage.renderReviewQueue(f.bankAccountId || null, 'proposed');
+        } catch (err) { toast(err.message, 'error'); }
+    };
+
     BankingPage.showContactGate = function (type, transactionId) {
         const form = document.getElementById('bank-review-form');
         const proposedName = form ? form.normalized_counterparty.value.trim() : '';
@@ -267,7 +299,7 @@
     // browser CSP and the desktop web view without adding more inline-handler
     // debt to the application.
     document.addEventListener('click', event => {
-        const target = event.target.closest('[data-bank-review-id], [data-bank-suggest-id], [data-bank-review-status], [data-bank-register-id], [data-bank-review-bulk], [data-bank-review-reject], [data-bank-review-supersede], [data-bank-review-approve], [data-bank-contact-gate]');
+        const target = event.target.closest('[data-bank-review-id], [data-bank-suggest-id], [data-bank-review-status], [data-bank-register-id], [data-bank-review-bulk], [data-bank-review-reject], [data-bank-review-supersede], [data-bank-review-approve], [data-bank-review-post], [data-bank-review-reverse], [data-bank-contact-gate]');
         if (!target) return;
         if (target.dataset.bankReviewId) BankingPage.showReview(Number(target.dataset.bankReviewId));
         else if (target.dataset.bankSuggestId) BankingPage.suggestReview(Number(target.dataset.bankSuggestId));
@@ -277,6 +309,8 @@
         else if (target.dataset.bankReviewReject) BankingPage.rejectReview(Number(target.dataset.bankReviewReject));
         else if (target.dataset.bankReviewSupersede) BankingPage.supersedeReview(Number(target.dataset.bankReviewSupersede));
         else if (target.dataset.bankReviewApprove) BankingPage.saveReview(event, Number(target.dataset.bankReviewApprove), true);
+        else if (target.dataset.bankReviewPost) BankingPage.postApprovedReview(Number(target.dataset.bankReviewPost));
+        else if (target.dataset.bankReviewReverse) BankingPage.reversePostedReview(Number(target.dataset.bankReviewReverse));
         else if (target.dataset.bankContactGate) BankingPage.showContactGate(target.dataset.bankContactGate, Number(target.dataset.bankTransactionId));
     });
     document.addEventListener('change', event => {
