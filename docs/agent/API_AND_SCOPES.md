@@ -27,3 +27,14 @@ curl -H "Authorization: Bearer $SLOWBOOKS_API_TOKEN" \
 - Re-read affected records and accounting invariants after every write.
 - Do not bypass a protected operation through direct database access.
 - Never loosen a closing date or set its override password through an agent.
+
+## Banking rule boundary
+
+- `GET /api/bank-rules/proposal-draft/{proposal_id}` is read-only and offers a
+  narrow rule after a direct income or expense proposal is approved.
+- `POST /api/bank-rules` creates that rule only after a separate user or agent
+  decision with bookkeeper write authority.
+- `POST /api/bank-rules/apply` may create `proposed` review records and legacy
+  category hints. It never approves a proposal or writes a journal entry.
+- Posting still requires `POST /api/banking/proposals/{id}/post` after the
+  proposal reaches `approved` through the configured review policy.

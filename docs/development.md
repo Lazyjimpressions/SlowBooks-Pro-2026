@@ -64,7 +64,7 @@ SlowBooks-Pro-2026/
 │   │   ├── deductions.py     # Deduction types, employee deductions, garnishments
 │   │   ├── qbo_mapping.py    # QBO ↔ Slowbooks ID mappings
 │   │   ├── attachments.py    # File attachments
-│   │   ├── bank_rules.py     # Bank transaction categorization rules
+│   │   ├── bank_rules.py     # Scoped bank-review proposal rules
 │   │   ├── budgets.py        # Budget tracking by account/period
 │   │   ├── document_audit.py # SHA-256 hash chain for tax-form PDFs
 │   │   ├── portal_access.py  # Portal access audit log

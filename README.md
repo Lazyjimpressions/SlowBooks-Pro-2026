@@ -103,7 +103,7 @@ a native `.app` in a DMG, no Docker or Python required.
 
 **v2.4 — Bank feeds & the AI-ready API.** Automatic transaction sync via
 [SimpleFIN](https://www.simplefin.org/) — you hold the bank credential,
-no middleman server, dedup + bank rules on arrival
+no middleman server, dedup + review proposals from scoped bank rules on arrival
 ([docs/setup-bank-feeds.md](docs/setup-bank-feeds.md)). Every install
 also serves a self-documenting local REST API (483 operations in v2.9); point
 Claude Code or any agentic CLI at it —

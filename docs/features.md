@@ -299,7 +299,7 @@ Canonical list of security measures lives in [SECURITY.md](../SECURITY.md); engi
 - **Multi-Company** — Support for multiple company databases, switchable from UI
 - **Global Search** — Unified server-side search across customers, vendors, items, invoices, estimates, and payments
 - **Attachments** — Upload files (PDF, images) to invoices, bills, and other entities with MIME type and extension validation
-- **Bank Rules** — Auto-categorize imported bank transactions with pattern-matching rules
+- **Bank Rules** — Propose account, payer/payee, customer/vendor, class, and intent using raw or normalized text plus optional register, direction, and amount scope; rules never approve or post
 - **Budgets** — Create and track budgets by account and period with actual-vs-budget comparison
 - **Email Templates** — Customizable email templates for invoices, estimates, and statements
 
@@ -571,7 +571,9 @@ All payroll, HR, tax-form, and self-service portal endpoints are documented with
 | `/api/companies` | GET, POST | Multi-company management |
 | `/api/uploads/logo` | POST | Upload company logo |
 | `/api/attachments/{type}/{id}` | GET, POST, DELETE | File attachments CRUD |
-| `/api/bank-rules` | GET, POST, PUT, DELETE | Bank transaction categorization rules |
+| `/api/bank-rules` | GET, POST, PUT, DELETE | Scoped bank-review proposal rules |
+| `/api/bank-rules/apply` | POST | Apply matching rules as non-posting review proposals |
+| `/api/bank-rules/proposal-draft/{proposal_id}` | GET | Prefill a narrow rule from an approved direct proposal |
 | `/api/budgets` | GET, POST, PUT, DELETE | Budget management |
 | `/api/email-templates` | GET, POST, PUT, DELETE | Custom email template management |
 | `/health` | GET | Liveness probe (no auth required) |

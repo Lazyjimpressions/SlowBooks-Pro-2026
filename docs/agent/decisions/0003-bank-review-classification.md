@@ -217,6 +217,13 @@ is copied into repository fixtures.
 - Direct posting remains deliberately narrower than classification; some
   correctly classified rows will stay on hold until later domain integration.
 
+## Implementation status
+
+As of September 9, 2026, Phases 1-5 implement this decision on the fork. Bank
+Rules now populate the same versioned proposal contract using scoped,
+deterministic matching. Rule application remains non-posting, and the UI offers
+an approved direct proposal as a rule draft rather than creating one silently.
+
 ## Alternatives rejected
 
 - **Store customer/vendor in `Transaction.source_id`:** rejected because that

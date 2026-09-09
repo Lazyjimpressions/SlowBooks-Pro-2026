@@ -304,22 +304,60 @@ def build_bank_suggestion(db: Session, txn: BankTransaction) -> dict:
         )
         rationale.append(f"Matched prior reviewed proposal {prior.id}")
 
-    rule = find_matching_rule(db, txn.payee or txn.description or "")
+    rule = find_matching_rule(db, txn)
     if rule is not None:
+        if suggestion["intent"] == "unknown" and rule.intent is not None:
+            suggestion["intent"] = rule.intent
+            suggestion["posting_route"] = rule.posting_route
         if suggestion["counter_account_id"] is None and rule.account_id is not None:
             suggestion["counter_account_id"] = rule.account_id
-        if (
-            suggestion["counterparty_resolution"] == "unresolved"
-            and rule.vendor_id is not None
-        ):
-            vendor = db.get(Vendor, rule.vendor_id)
-            suggestion["vendor_id"] = rule.vendor_id
-            suggestion["counterparty_resolution"] = "vendor"
-            if vendor is not None:
-                suggestion["normalized_counterparty"] = vendor.name
-                suggestion["normalized_counterparty_key"] = normalize_contact_name(
-                    vendor.name
-                )
+        if suggestion["class_resolution"] == "unresolved" and rule.class_resolution:
+            rule_class = db.get(TxnClass, rule.class_id) if rule.class_id else None
+            if rule.class_resolution != "assigned" or (
+                rule_class is not None and not rule_class.is_archived
+            ):
+                suggestion["class_resolution"] = rule.class_resolution
+                suggestion["class_id"] = rule.class_id
+        if suggestion["counterparty_resolution"] == "unresolved":
+            if rule.counterparty_role is not None:
+                suggestion["counterparty_role"] = rule.counterparty_role
+            rule_resolution = rule.counterparty_resolution
+            if rule_resolution is None and rule.customer_id:
+                rule_resolution = "customer"
+            elif rule_resolution is None and rule.vendor_id:
+                rule_resolution = "vendor"
+            if rule_resolution == "customer" and rule.customer_id:
+                customer = db.get(Customer, rule.customer_id)
+                if customer is not None and customer.is_active:
+                    suggestion.update(
+                        customer_id=customer.id,
+                        vendor_id=None,
+                        counterparty_resolution="customer",
+                        normalized_counterparty=customer.name,
+                        normalized_counterparty_key=normalize_contact_name(
+                            customer.name
+                        ),
+                    )
+            elif rule_resolution == "vendor" and rule.vendor_id:
+                vendor = db.get(Vendor, rule.vendor_id)
+                if vendor is not None and vendor.is_active:
+                    suggestion.update(
+                        vendor_id=vendor.id,
+                        customer_id=None,
+                        counterparty_resolution="vendor",
+                        normalized_counterparty=vendor.name,
+                        normalized_counterparty_key=normalize_contact_name(vendor.name),
+                    )
+            elif rule_resolution in ("text_only", "not_applicable"):
+                suggestion["counterparty_resolution"] = rule_resolution
+                if rule_resolution == "not_applicable":
+                    suggestion.update(
+                        customer_id=None,
+                        vendor_id=None,
+                        normalized_counterparty=None,
+                        normalized_counterparty_key=None,
+                    )
+        suggestion["proposal_source"] = "rule"
         _component(components, "bank_rule", "0.45", f"Rule {rule.id}")
         rationale.append(f"Matched Bank Rule {rule.id}")
     elif (
