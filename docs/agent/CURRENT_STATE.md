@@ -3,7 +3,7 @@
 **Verified:** 2026-09-09
 **Upstream source:** `VonHoltenCodes/SlowBooks-Pro-2026`  
 **Fork:** `Lazyjimpressions/SlowBooks-Pro-2026`  
-**Baseline:** upstream v2.9.4 plus merged fork banking Phases 1-3
+**Baseline:** upstream v2.9.4 plus fork banking Phases 1-5
 
 ## Repository model
 
@@ -35,10 +35,10 @@
 
 ## Active work
 
-`feat/bank-rules-reviewed-learning` implements Phase 5 of
+PR #15 carries Phase 5 of
 `docs/implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md` on the Phase 4 baseline
-merged by PR #14. Phase 6 will merge, package, back up the test company, and
-validate these banking phases in one controlled macOS build.
+merged by PR #14. Phase 6 will package, back up the test company, and validate
+these banking phases in one controlled macOS build.
 
 ## Verification status
 
