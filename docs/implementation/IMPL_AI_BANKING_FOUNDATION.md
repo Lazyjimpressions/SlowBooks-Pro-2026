@@ -84,7 +84,7 @@ Detailed execution is tracked in
 
 **Deliverables:**
 
-- [ ] Review proposal records distinguish unresolved rows from approved
+- [x] Review proposal records distinguish unresolved rows from approved
   personal/no-class activity
 - [ ] Required review fields: transaction intent, counter-account, contact
   role/contact, class, confidence, and rationale
