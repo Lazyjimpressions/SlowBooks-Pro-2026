@@ -7,6 +7,7 @@ from app.models.estimates import Estimate, EstimateLine
 from app.models.payments import Payment, PaymentAllocation
 from app.models.banking import (
     BankAccount,
+    BankCounterpartyAlias,
     BankTransaction,
     BankTransactionProposal,
     Reconciliation,
@@ -110,6 +111,7 @@ __all__ = [
     "Payment",
     "PaymentAllocation",
     "BankAccount",
+    "BankCounterpartyAlias",
     "BankTransaction",
     "BankTransactionProposal",
     "Reconciliation",

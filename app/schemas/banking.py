@@ -2,7 +2,7 @@ from datetime import date as dt_date, datetime
 from decimal import Decimal
 from typing import Literal, Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 from app.schemas.common import StrictModel
 
 from app.models.banking import ReconciliationStatus
@@ -93,7 +93,7 @@ ProposalSource = Literal["human", "rule", "deterministic", "ai"]
 class BankTransactionProposalCreate(StrictModel):
     intent: BankProposalIntent = "unknown"
     posting_route: BankProposalRoute = "hold"
-    normalized_counterparty: Optional[str] = None
+    normalized_counterparty: Optional[str] = Field(default=None, max_length=200)
     counterparty_role: Optional[CounterpartyRole] = None
     counterparty_resolution: CounterpartyResolution = "unresolved"
     customer_id: Optional[int] = None
@@ -107,7 +107,7 @@ class BankTransactionProposalCreate(StrictModel):
     proposal_source: ProposalSource = "human"
     confidence: Optional[Decimal] = None
     rationale: Optional[str] = None
-    normalizer_version: Optional[str] = None
+    normalizer_version: Optional[str] = Field(default=None, max_length=50)
 
     @model_validator(mode="after")
     def validate_resolutions(self):
@@ -150,6 +150,7 @@ class BankTransactionProposalResponse(BaseModel):
     intent: str
     posting_route: str
     normalized_counterparty: Optional[str]
+    normalized_counterparty_key: Optional[str]
     counterparty_role: Optional[str]
     counterparty_resolution: str
     customer_id: Optional[int]
@@ -162,6 +163,7 @@ class BankTransactionProposalResponse(BaseModel):
     paired_bank_transaction_id: Optional[int]
     proposal_source: str
     confidence: Optional[Decimal]
+    confidence_components: Optional[list[dict]]
     rationale: Optional[str]
     normalizer_version: Optional[str]
     supersedes_id: Optional[int]
@@ -181,6 +183,50 @@ class BankReviewQueueItem(BaseModel):
 
 class BankTransactionReviewResponse(BankReviewQueueItem):
     proposal_history: list[BankTransactionProposalResponse]
+
+
+class BankCounterpartyAliasCreate(StrictModel):
+    pattern: str = Field(min_length=1, max_length=500)
+    canonical_name: str = Field(min_length=1, max_length=200)
+    bank_account_id: Optional[int] = None
+    direction: Literal["any", "deposit", "withdrawal"] = "any"
+    counterparty_role: CounterpartyRole
+    customer_id: Optional[int] = None
+    vendor_id: Optional[int] = None
+    default_account_id: Optional[int] = None
+    default_class_id: Optional[int] = None
+
+    @model_validator(mode="after")
+    def validate_contact(self):
+        if not self.pattern.strip() or not self.canonical_name.strip():
+            raise ValueError("pattern and canonical_name must contain usable text")
+        if self.customer_id is not None and self.vendor_id is not None:
+            raise ValueError("an alias cannot reference both a customer and vendor")
+        if self.counterparty_role == "not_applicable" and (
+            self.customer_id is not None or self.vendor_id is not None
+        ):
+            raise ValueError("not_applicable aliases cannot reference a contact")
+        return self
+
+
+class BankCounterpartyAliasResponse(BaseModel):
+    id: int
+    pattern: str
+    normalized_pattern: str
+    canonical_name: str
+    bank_account_id: Optional[int]
+    direction: str
+    counterparty_role: str
+    customer_id: Optional[int]
+    vendor_id: Optional[int]
+    default_account_id: Optional[int]
+    default_class_id: Optional[int]
+    is_active: bool
+    normalizer_version: str
+    created_by: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class BankTransactionPost(StrictModel):

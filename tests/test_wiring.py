@@ -308,6 +308,10 @@ _INTENTIONAL_BACKEND_ONLY: set[tuple[str, str]] = {
     ("GET", "/api/banking/review"),
     ("GET", "/api/banking/transactions/{transaction_id}/review"),
     ("POST", "/api/banking/transactions/{transaction_id}/proposals"),
+    ("POST", "/api/banking/transactions/{transaction_id}/suggest"),
+    ("GET", "/api/banking/counterparty-aliases"),
+    ("POST", "/api/banking/counterparty-aliases"),
+    ("DELETE", "/api/banking/counterparty-aliases/{alias_id}"),
     # Drill-down analytics endpoints. SPA uses /api/analytics/dashboard
     # which returns the bundled response. The per-card endpoints stay
     # for future "refresh this card" UI + API consumers.

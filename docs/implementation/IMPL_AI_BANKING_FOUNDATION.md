@@ -69,11 +69,11 @@ Gitleaks, and Docker build checks.
 
 **Deliverables:**
 
-- [ ] Proposal and review records
+- [x] Proposal and review records
 - [x] Idempotent domain posting endpoint
 - [x] Bank-row-to-journal linkage
-- [ ] Transfer matching and reversal workflow (exact reviewed pairs can post;
-  automated matching and reversal remain)
+- [ ] Transfer matching and reversal workflow (exact reviewed pairs can post
+  and deterministic matching can propose pairs; approval and reversal remain)
 
 ---
 
@@ -86,12 +86,13 @@ Detailed execution is tracked in
 
 - [x] Review proposal records distinguish unresolved rows from approved
   personal/no-class activity
-- [ ] Required review fields: transaction intent, counter-account, contact
+- [x] Required review fields: transaction intent, counter-account, contact
   role/contact, class, confidence, and rationale
-- [ ] Vendor/customer suggestions and approved links
+- [x] Vendor/customer suggestions
+- [ ] Approved contact links retained on posted ledger transactions
 - [ ] Bank Rule contact, class, counter-account, and transaction-intent
   application
-- [ ] Preserve raw descriptions and store normalized matching fields separately
+- [x] Preserve raw descriptions and store normalized matching fields separately
 - [ ] Post approved rows through the appropriate Expense, Customer Payment,
   Bill Payment, Deposit, or Transfer service
 - [ ] Confidence and automation policies

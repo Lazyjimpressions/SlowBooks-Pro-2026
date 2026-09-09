@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.2
+**Version:** 1.3
 **Last Updated:** September 9, 2026
-**Status:** Phase 2 - Deterministic normalization and suggestions
+**Status:** Phase 3 - Review, correction, and approval
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -175,31 +175,31 @@ does not alter a register balance.
 
 ---
 
-## Phase 2 — Deterministic normalization and suggestions 🔲
+## Phase 2 — Deterministic normalization and suggestions 🟩
 
 **Deliverables:**
 
-- [ ] Add versioned normalization that preserves raw source fields.
-- [ ] Normalize case, spacing, punctuation, common bank prefixes, card suffixes,
+- [x] Add versioned normalization that preserves raw source fields.
+- [x] Normalize case, spacing, punctuation, common bank prefixes, card suffixes,
   phone/location noise, and reference tokens without deleting useful evidence.
-- [ ] Support reviewed aliases from raw patterns to canonical counterparties.
-- [ ] Suggest existing customers and vendors using exact aliases first, then
+- [x] Support reviewed aliases from raw patterns to canonical counterparties.
+- [x] Suggest existing customers and vendors using exact aliases first, then
   conservative normalized-name matching.
-- [ ] Suggest counter-accounts and classes from approved rules and prior
+- [x] Suggest counter-accounts and classes from approved rules and prior
   reviewed decisions.
-- [ ] Detect equal-and-opposite transfer candidates across linked registers.
-- [ ] Search open invoices and bills by contact, reference, date, and amount;
+- [x] Detect equal-and-opposite transfer candidates across linked registers.
+- [x] Search open invoices and bills by contact, reference, date, and amount;
   label these as candidates but do not apply them in this plan.
-- [ ] Produce deterministic confidence components that can be inspected without
+- [x] Produce deterministic confidence components that can be inspected without
   an LLM.
 
 **Tests:**
 
-- [ ] Source descriptions remain byte-for-byte unchanged
-- [ ] Multiple noisy forms of the same synthetic merchant normalize together
-- [ ] Similar but distinct contacts do not auto-merge
-- [ ] Direction and register type prevent invalid intent suggestions
-- [ ] AR/AP candidates are held from direct posting
+- [x] Source descriptions remain byte-for-byte unchanged
+- [x] Multiple noisy forms of the same synthetic merchant normalize together
+- [x] Similar but distinct contacts do not auto-merge
+- [x] Direction and register type prevent invalid intent suggestions
+- [x] AR/AP candidates are held from direct posting
 
 **Likely files:**
 
@@ -207,6 +207,15 @@ does not alter a register balance.
 - `app/services/bank_classification.py`
 - `tests/test_bank_normalization.py`
 - `tests/test_bank_classification.py`
+
+**Completed:** September 9, 2026. Normalizer `bank-text-v1` derives bounded
+matching keys, display names, reference tokens, and removed-noise evidence
+without changing imported fields. Reviewed aliases may be global or scoped to
+a register and direction. `POST /api/banking/transactions/{id}/suggest`
+persists a deterministic proposal using reviewed aliases, prior decisions,
+Bank Rules, exact existing contacts, transfer pairs, and open-document
+candidates. Confidence components and rationale remain inspectable; every
+result stays `proposed` and no suggestion posts or creates a contact.
 
 ---
 

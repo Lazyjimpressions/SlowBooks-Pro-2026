@@ -15,6 +15,34 @@ from app.models.banking import BankTransaction
 logger = logging.getLogger(__name__)
 
 
+def rule_matches(rule, payee: str) -> bool:
+    """Return whether one rule matches source text, without mutating a row."""
+    candidate = (payee or "").lower()
+    pattern = (rule.pattern or "").lower()
+    if not pattern:
+        return False
+    if rule.rule_type == "contains":
+        return pattern in candidate
+    if rule.rule_type == "starts_with":
+        return candidate.startswith(pattern)
+    if rule.rule_type == "exact":
+        return candidate == pattern
+    return False
+
+
+def find_matching_rule(db: Session, payee: str):
+    """Return the first active rule using the importer's priority contract."""
+    from app.models.bank_rules import BankRule
+
+    rules = (
+        db.query(BankRule)
+        .filter(BankRule.is_active)
+        .order_by(BankRule.priority.desc(), BankRule.id)
+        .all()
+    )
+    return next((rule for rule in rules if rule_matches(rule, payee)), None)
+
+
 def apply_bank_rules(db: Session, bank_account_id: int) -> int:
     """Auto-categorize this account's unmatched transactions by bank rules.
 
@@ -46,17 +74,8 @@ def apply_bank_rules(db: Session, bank_account_id: int) -> int:
 
     auto_matched = 0
     for txn in unmatched:
-        payee = (txn.payee or "").lower()
         for rule in rules:
-            pattern = rule.pattern.lower()
-            hit = False
-            if rule.rule_type == "contains" and pattern in payee:
-                hit = True
-            elif rule.rule_type == "starts_with" and payee.startswith(pattern):
-                hit = True
-            elif rule.rule_type == "exact" and payee == pattern:
-                hit = True
-            if hit:
+            if rule_matches(rule, txn.payee or ""):
                 if rule.account_id:
                     txn.category_account_id = rule.account_id
                 txn.match_status = "auto"
