@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.7
+**Version:** 1.8
 **Last Updated:** September 9, 2026
-**Status:** Phase 6 controlled rollout in progress
+**Status:** Complete through Phase 6 controlled rollout
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -354,21 +354,21 @@ and no statement name creates a contact.
 
 ---
 
-## Phase 6 — Validation and controlled rollout 🔲
+## Phase 6 — Validation and controlled rollout 🟩
 
 **Deliverables:**
 
 - [x] Run targeted tests, formatting, lint, migration checks, and the full test
   suite in the repository's established order.
-- [ ] Pass Linux CI, dependency audit, Gitleaks, and Docker build checks.
-- [ ] Merge through the fork before rebuilding the macOS application.
-- [ ] Back up the test company database and install one versioned app build.
-- [ ] Validate a synthetic/live-test sample covering personal expense, Schedule
+- [x] Pass Linux CI, dependency audit, Gitleaks, and Docker build checks.
+- [x] Merge through the fork before rebuilding the macOS application.
+- [x] Back up the test company database and install one versioned app build.
+- [x] Validate a synthetic/live-test sample covering personal expense, Schedule
   C expense, direct business income, transfer, card payment, reimbursement,
   unknown counterparty, and held AR/AP candidates.
-- [ ] Re-read bank rows, proposal history, journal lines, class values, contact
+- [x] Re-read bank rows, proposal history, journal lines, class values, contact
   links, register balances, and financial reports after every live write.
-- [ ] Confirm the existing BoA Savings postings remain unchanged unless an
+- [x] Confirm the existing BoA Savings postings remain unchanged unless an
   explicit reviewed backfill is performed.
 
 **Exit criteria:**
@@ -379,7 +379,7 @@ and no statement name creates a contact.
 - No AR/AP settlement is duplicated as direct income or expense.
 - Reimport and repost retries do not change balances or create duplicates.
 
-**In progress:** September 9, 2026. The rollout branch updates WeasyPrint from
+**Completed:** September 9, 2026. The rollout branch updated WeasyPrint from
 69.0 to 70.0 for CVE-2026-55073 and adapts the data-only PDF URL fetcher to the
 new `URLFetcher` API. The live dependency audit is clean; 74 focused
 banking/PDF tests, Black, Ruff, and the two banking migrations' isolated
@@ -387,7 +387,25 @@ upgrade/downgrade round trip pass. The local full suite reports 1,985 passed
 and 8 skipped with only the previously documented native macOS OCR expectation
 mismatch. A full historical downgrade separately exposes a pre-existing
 SQLite defect in the Tier 3 HR downgrade; it does not affect forward upgrade
-to head or the Phase 4/5 banking migration round trip.
+to head or the Phase 4/5 banking migration round trip and is tracked in issue
+#17.
+
+PR #16 passed every required GitHub check and merged as
+`9d8de31924ca81137967fc855d061e32f99f7774`. macOS workflow run `34408086809`
+built that exact commit; checksum verification, bundle validation, smoke tests,
+PDF rendering, and native OCR checks passed. Signing and notarization remained
+intentionally unavailable in the fork.
+
+The installed acceptance build upgraded the test database to head after a
+verified out-of-repository backup. The synthetic sample exercised all required
+intents and both contact choices: explicit existing customer/vendor links and
+text-only counterparties that do not create module records. Direct postings
+retained class and payer/payee provenance; mutually paired transfers covered
+ordinary transfers and card payments; AR/AP candidates remained approved holds
+and refused generic posting. Repost and reverse retries were idempotent.
+Reversals restored every chart-account net balance and the profit-and-loss
+totals while preserving equal gross debit/credit audit activity, as intended.
+The original six register balances and existing BoA Savings rows were unchanged.
 
 ---
 
