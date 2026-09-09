@@ -2,8 +2,8 @@
 
 **Version:** 1.1
 **Last Updated:** September 8, 2026
-**Status:** Phase 2 core posting complete; proposal/review and reversal remain;
-Phase 3 classification is next
+**Status:** Bank review classification Phase 3 complete; approved-proposal
+posting and reversal are next
 **References:**
 
 - [Banking automation](../agent/BANKING_AUTOMATION.md)
@@ -98,10 +98,11 @@ Detailed execution is tracked in
 - [ ] Confidence and automation policies
 - [ ] Exception queue and reporting disclosure
 
-For the initial implementation, `Sch C - Lazyj` is the only business class.
-An explicitly approved null class represents personal/no-class activity; a row
-without an approved proposal remains unresolved. Do not create contacts merely
-because a statement contains a new name.
+For the initial implementation, `Personal` may be configured as the visible
+default class and `Sch C - Lazyj` is the first business class. A pure
+balance-sheet transaction uses `not_applicable`; a row without an approved
+proposal remains unresolved. Do not create contacts merely because a statement
+contains a new name.
 
 ## Future phase — AR/AP application and merchant settlement 🔲
 

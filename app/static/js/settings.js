@@ -6,6 +6,7 @@
 const SettingsPage = {
     async render() {
         const s = await API.get('/settings');
+        SettingsPage._settings = s;
         setTimeout(() => {
             SettingsPage.loadBackups();
             SettingsPage.loadEmailTemplates();
@@ -310,6 +311,7 @@ const SettingsPage = {
                         <input type="text" id="new-class-name" placeholder="New ${T('class')} name" style="width:220px;">
                         <button type="button" class="btn btn-primary" onclick="SettingsPage.addClass()">Add ${T('Class')}</button>
                     </div>
+                    <div id="default-class-setting" style="margin-bottom:12px;"></div>
                     <div id="classes-list"></div>
                 </div>
 
@@ -1054,6 +1056,22 @@ SettingsPage.loadClasses = async function () {
         const classes = await API.get('/classes?include_archived=true');
         SettingsPage._classes = classes;
         const np = Terms.isNonprofit();
+        const defaultEl = document.getElementById('default-class-setting');
+        if (defaultEl) {
+            if (np) {
+                defaultEl.innerHTML = '';
+            } else {
+                const selected = Number((SettingsPage._settings || {}).default_class_id || 0);
+                const choices = classes.filter(c => !c.is_archived && !c.is_system_default).map(c =>
+                    `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+                defaultEl.innerHTML = `<label style="font-size:11px;font-weight:600;">Default class for business entry and bank review</label>
+                    <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                        <select id="default-class-id"><option value="">No operating default</option>${choices}</select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="SettingsPage.saveDefaultClass()">Save Default</button>
+                    </div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Use a real class such as Personal. Uncategorized remains the exception bucket for missing classifications.</div>`;
+            }
+        }
         const fundCols = np ? `<th scope="col">Restriction</th><th scope="col">Function</th><th scope="col">Donor / purpose</th>` : '';
         const fundCells = c => np ? `
                 <td>${escapeHtml(SettingsPage.RESTRICTION_LABELS[c.restriction] || c.restriction)}</td>
@@ -1075,6 +1093,16 @@ SettingsPage.loadClasses = async function () {
     } catch (err) {
         el.innerHTML = `<div style="color:var(--danger); font-size:11px;">${escapeHtml(err.message)}</div>`;
     }
+};
+
+SettingsPage.saveDefaultClass = async function () {
+    const select = document.getElementById('default-class-id');
+    if (!select) return;
+    try {
+        const settings = await API.put('/settings', { default_class_id: select.value });
+        SettingsPage._settings = settings;
+        toast('Default class saved');
+    } catch (err) { toast(err.message, 'error'); }
 };
 
 SettingsPage.addClass = async function () {
@@ -1396,4 +1424,3 @@ SettingsPage.toggleEquipment = async function (id, active) {
         SettingsPage.loadEquipment();
     } catch (err) { toast(err.message, 'error'); }
 };
-

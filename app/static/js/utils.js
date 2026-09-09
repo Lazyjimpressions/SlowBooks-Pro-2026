@@ -301,16 +301,17 @@ function countryOptions(selected) {
 
 // ---------------------------------------------------------------------------
 // Class tracking dimension — shared dropdown for entry forms.
-// Returns a labeled form-group; the system-default class ("Uncategorized")
-// lists first and is preselected when no selectedId is given. Archived
-// classes are excluded (historical rows keep them; new entries can't).
+// Returns a labeled form-group and selects an explicit value, then the
+// configured business default, then the system Uncategorized fallback.
+// Archived classes are excluded (historical rows keep them; new entries can't).
 // ---------------------------------------------------------------------------
 async function classFormGroupHtml(selectedId) {
-    let classes = [];
-    try { classes = await API.get('/classes'); } catch (e) { return ''; }
+    let classes = [], settings = {};
+    try { [classes, settings] = await Promise.all([API.get('/classes'), API.get('/settings')]); } catch (e) { return ''; }
     if (!classes.length) return '';
+    const configuredDefault = settings.company_type === 'business' ? Number(settings.default_class_id || 0) : 0;
     const opts = classes.map(c =>
-        `<option value="${c.id}" ${selectedId ? (c.id === selectedId ? 'selected' : '') : (c.is_system_default ? 'selected' : '')}>${escapeHtml(c.name)}</option>`
+        `<option value="${c.id}" ${selectedId ? (c.id === selectedId ? 'selected' : '') : (configuredDefault ? (c.id === configuredDefault ? 'selected' : '') : (c.is_system_default ? 'selected' : ''))}>${escapeHtml(c.name)}</option>`
     ).join('');
     return `<div class="form-group"><label>${T('Class')}</label>
         <select name="class_id">${opts}</select></div>`;

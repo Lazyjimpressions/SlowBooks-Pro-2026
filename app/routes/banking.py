@@ -35,6 +35,8 @@ from app.schemas.banking import (
     BankTransactionPost,
     BankTransactionProposalCreate,
     BankTransactionProposalResponse,
+    BankProposalReviewAction,
+    BankProposalBulkApprove,
     BankReviewQueueItem,
     BankTransactionReviewResponse,
     BankCounterpartyAliasCreate,
@@ -128,6 +130,9 @@ def create_bank_transaction(data: BankTransactionCreate, db: Session = Depends(g
 
 
 ACTIVE_PROPOSAL_STATUSES = ("proposed", "approved")
+REVIEWABLE_PROPOSAL_STATUSES = ("proposed", "approved")
+SAFE_BULK_INTENTS = ("direct_expense", "direct_income")
+SAFE_BULK_MAX_ABS_AMOUNT = Decimal("1000.00")
 REFERENCE_MODELS = {
     "customer_id": Customer,
     "vendor_id": Vendor,
@@ -161,6 +166,178 @@ def _validate_reference_ids(db: Session, values: dict) -> None:
         object_id = values.get(field)
         if object_id is not None and db.get(model, object_id) is None:
             raise HTTPException(status_code=400, detail=f"Invalid {field}")
+
+
+def _actor(db: Session) -> str:
+    return db.info.get("acting_username") or "system"
+
+
+def _proposal_values(data: BankTransactionProposalCreate) -> dict:
+    values = data.model_dump()
+    values["proposal_source"] = "human"
+    if data.normalized_counterparty:
+        values["normalized_counterparty"] = data.normalized_counterparty.strip()
+        values["normalized_counterparty_key"] = normalize_contact_name(
+            data.normalized_counterparty
+        )
+    else:
+        values["normalized_counterparty"] = None
+        values["normalized_counterparty_key"] = None
+    return values
+
+
+def _proposal_or_404(db: Session, proposal_id: int) -> BankTransactionProposal:
+    proposal = db.get(BankTransactionProposal, proposal_id)
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="Bank proposal not found")
+    return proposal
+
+
+def _validate_proposal_for_approval(
+    db: Session, proposal: BankTransactionProposal
+) -> None:
+    """Validate a complete review decision without posting accounting entries."""
+    allowed_routes = {
+        "direct_expense": {"direct"},
+        "direct_income": {"direct"},
+        "customer_payment": {"customer_payment"},
+        "bill_payment": {"bill_payment"},
+        "transfer": {"transfer"},
+        "owner_contribution": {"direct"},
+        "owner_draw": {"direct"},
+        "loan_proceeds": {"direct"},
+        "loan_payment": {"hold"},
+        "investment_activity": {"hold"},
+        "reimbursement": {"direct", "hold"},
+    }
+    if proposal.intent == "unknown":
+        raise HTTPException(status_code=422, detail="Intent must be resolved")
+    if proposal.posting_route not in allowed_routes.get(proposal.intent, set()):
+        raise HTTPException(
+            status_code=422,
+            detail=f"{proposal.posting_route} is not valid for {proposal.intent}",
+        )
+    if proposal.counterparty_resolution == "unresolved":
+        raise HTTPException(status_code=422, detail="Counterparty decision is required")
+    if proposal.counterparty_role is None:
+        raise HTTPException(status_code=422, detail="Counterparty role is required")
+    if proposal.class_resolution == "unresolved":
+        raise HTTPException(status_code=422, detail="Class decision is required")
+
+    if proposal.class_resolution == "assigned":
+        txn_class = db.get(TxnClass, proposal.class_id)
+        if txn_class is None or txn_class.is_archived:
+            raise HTTPException(status_code=422, detail="Assigned class must be active")
+
+    if proposal.counterparty_resolution == "customer":
+        customer = db.get(Customer, proposal.customer_id)
+        if customer is None or not customer.is_active:
+            raise HTTPException(
+                status_code=422, detail="Assigned customer must be active"
+            )
+    elif proposal.counterparty_resolution == "vendor":
+        vendor = db.get(Vendor, proposal.vendor_id)
+        if vendor is None or not vendor.is_active:
+            raise HTTPException(
+                status_code=422, detail="Assigned vendor must be active"
+            )
+
+    if proposal.intent in SAFE_BULK_INTENTS:
+        if proposal.class_resolution == "not_applicable":
+            raise HTTPException(
+                status_code=422,
+                detail="Income and expense activity requires an assigned or personal/no-class decision",
+            )
+        expected_role = "payer" if proposal.intent == "direct_income" else "payee"
+        if proposal.counterparty_role != expected_role:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{proposal.intent} requires counterparty role {expected_role}",
+            )
+        allowed_contacts = (
+            {"customer", "text_only"}
+            if proposal.intent == "direct_income"
+            else {"vendor", "text_only"}
+        )
+        if proposal.counterparty_resolution not in allowed_contacts:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{proposal.intent} has an incompatible counterparty decision",
+            )
+
+    if proposal.posting_route == "direct":
+        account = db.get(Account, proposal.counter_account_id)
+        if account is None or not account.is_active:
+            raise HTTPException(
+                status_code=422,
+                detail="Direct proposals require an active counter-account",
+            )
+    elif proposal.posting_route == "transfer":
+        if proposal.paired_bank_transaction_id is None:
+            raise HTTPException(
+                status_code=422, detail="Transfers require a paired bank transaction"
+            )
+        if (
+            proposal.counterparty_resolution != "not_applicable"
+            or proposal.counterparty_role != "not_applicable"
+            or proposal.class_resolution != "not_applicable"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Transfers require contact and class to be not applicable",
+            )
+    elif proposal.posting_route == "customer_payment":
+        if (
+            proposal.counterparty_resolution != "customer"
+            or proposal.counterparty_role != "payer"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Customer payments require an existing customer as payer",
+            )
+    elif proposal.posting_route == "bill_payment":
+        if (
+            proposal.counterparty_resolution != "vendor"
+            or proposal.counterparty_role != "payee"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Bill payments require an existing vendor as payee",
+            )
+
+
+def _approve_proposal(db: Session, proposal: BankTransactionProposal) -> None:
+    if proposal.status == "approved":
+        return
+    if proposal.status != "proposed":
+        raise HTTPException(
+            status_code=409, detail="Only proposed items can be approved"
+        )
+    if proposal.bank_transaction.transaction_id is not None:
+        raise HTTPException(
+            status_code=409, detail="Bank transaction is already posted"
+        )
+    _validate_proposal_for_approval(db, proposal)
+    proposal.status = "approved"
+    proposal.reviewed_by = _actor(db)
+    proposal.reviewed_at = datetime.now().astimezone()
+
+
+def _bulk_fingerprint(proposal: BankTransactionProposal) -> tuple:
+    txn = proposal.bank_transaction
+    return (
+        proposal.intent,
+        proposal.posting_route,
+        proposal.normalized_counterparty_key,
+        proposal.counterparty_role,
+        proposal.counterparty_resolution,
+        proposal.customer_id,
+        proposal.vendor_id,
+        proposal.counter_account_id,
+        proposal.class_resolution,
+        proposal.class_id,
+        abs(Decimal(str(txn.amount))),
+    )
 
 
 def _persist_proposal(
@@ -300,12 +477,7 @@ def create_bank_transaction_proposal(
     db: Session = Depends(get_db),
 ):
     """Create a review proposal. This endpoint never posts to the ledger."""
-    values = data.model_dump()
-    if data.normalized_counterparty:
-        values["normalized_counterparty_key"] = normalize_contact_name(
-            data.normalized_counterparty
-        )
-    return _persist_proposal(db, transaction_id, values)
+    return _persist_proposal(db, transaction_id, _proposal_values(data))
 
 
 @router.post(
@@ -319,6 +491,172 @@ def suggest_bank_transaction(transaction_id: int, db: Session = Depends(get_db))
     if not txn:
         raise HTTPException(status_code=404, detail="Bank transaction not found")
     return _persist_proposal(db, transaction_id, build_bank_suggestion(db, txn))
+
+
+@router.put(
+    "/proposals/{proposal_id}",
+    response_model=BankTransactionProposalResponse,
+    status_code=201,
+)
+def correct_bank_proposal(
+    proposal_id: int,
+    data: BankTransactionProposalCreate,
+    db: Session = Depends(get_db),
+):
+    """Create a human-reviewed revision; imported evidence remains untouched."""
+    current = _proposal_or_404(db, proposal_id)
+    if current.status not in REVIEWABLE_PROPOSAL_STATUSES:
+        raise HTTPException(
+            status_code=409, detail="Only proposed or approved items can be corrected"
+        )
+    if current.bank_transaction.transaction_id is not None:
+        raise HTTPException(
+            status_code=409, detail="Bank transaction is already posted"
+        )
+    values = _proposal_values(data)
+    _validate_reference_ids(db, values)
+    if values.get("paired_bank_transaction_id") == current.bank_transaction_id:
+        raise HTTPException(
+            status_code=400, detail="A bank transaction cannot be paired with itself"
+        )
+    revision = (
+        db.query(func.max(BankTransactionProposal.revision))
+        .filter(
+            BankTransactionProposal.bank_transaction_id == current.bank_transaction_id
+        )
+        .scalar()
+        or 0
+    ) + 1
+    now = datetime.now().astimezone()
+    current.status = "superseded"
+    current.reviewed_by = _actor(db)
+    current.reviewed_at = now
+    db.flush()
+    replacement = BankTransactionProposal(
+        bank_transaction_id=current.bank_transaction_id,
+        revision=revision,
+        status="proposed",
+        supersedes_id=current.id,
+        created_by=_actor(db),
+        **values,
+    )
+    db.add(replacement)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A concurrent review changed this proposal; reload and retry",
+        )
+    db.refresh(replacement)
+    return replacement
+
+
+@router.post(
+    "/proposals/bulk-approve",
+    response_model=list[BankTransactionProposalResponse],
+)
+def bulk_approve_bank_proposals(
+    data: BankProposalBulkApprove, db: Session = Depends(get_db)
+):
+    proposals = (
+        db.query(BankTransactionProposal)
+        .filter(BankTransactionProposal.id.in_(data.proposal_ids))
+        .all()
+    )
+    if len(proposals) != len(data.proposal_ids):
+        raise HTTPException(
+            status_code=404, detail="One or more proposals were not found"
+        )
+    for proposal in proposals:
+        _validate_proposal_for_approval(db, proposal)
+        if proposal.status != "proposed" or proposal.intent not in SAFE_BULK_INTENTS:
+            raise HTTPException(
+                status_code=422,
+                detail="Bulk approval is limited to proposed direct income or expense items",
+            )
+        if (
+            abs(Decimal(str(proposal.bank_transaction.amount)))
+            > SAFE_BULK_MAX_ABS_AMOUNT
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Amounts above $1,000 require individual approval",
+            )
+    if len({_bulk_fingerprint(proposal) for proposal in proposals}) != 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Bulk approval requires identical counterparty, amount, account, and class decisions",
+        )
+    for proposal in proposals:
+        _approve_proposal(db, proposal)
+    db.commit()
+    return sorted(proposals, key=lambda proposal: data.proposal_ids.index(proposal.id))
+
+
+@router.post(
+    "/proposals/{proposal_id}/approve",
+    response_model=BankTransactionProposalResponse,
+)
+def approve_bank_proposal(proposal_id: int, db: Session = Depends(get_db)):
+    proposal = _proposal_or_404(db, proposal_id)
+    _approve_proposal(db, proposal)
+    db.commit()
+    db.refresh(proposal)
+    return proposal
+
+
+@router.post(
+    "/proposals/{proposal_id}/reject",
+    response_model=BankTransactionProposalResponse,
+)
+def reject_bank_proposal(
+    proposal_id: int,
+    data: BankProposalReviewAction,
+    db: Session = Depends(get_db),
+):
+    proposal = _proposal_or_404(db, proposal_id)
+    if proposal.status == "rejected":
+        return proposal
+    if proposal.status != "proposed":
+        raise HTTPException(
+            status_code=409, detail="Only proposed items can be rejected"
+        )
+    proposal.status = "rejected"
+    proposal.review_note = data.note.strip() if data.note else None
+    proposal.reviewed_by = _actor(db)
+    proposal.reviewed_at = datetime.now().astimezone()
+    db.commit()
+    db.refresh(proposal)
+    return proposal
+
+
+@router.post(
+    "/proposals/{proposal_id}/supersede",
+    response_model=BankTransactionProposalResponse,
+)
+def supersede_bank_proposal(
+    proposal_id: int,
+    data: BankProposalReviewAction,
+    db: Session = Depends(get_db),
+):
+    proposal = _proposal_or_404(db, proposal_id)
+    if proposal.status == "superseded":
+        return proposal
+    if proposal.status not in REVIEWABLE_PROPOSAL_STATUSES:
+        raise HTTPException(
+            status_code=409, detail="Only proposed or approved items can be superseded"
+        )
+    if proposal.bank_transaction.transaction_id is not None:
+        raise HTTPException(status_code=409, detail="Posted work must be reversed")
+    proposal.status = "superseded"
+    proposal.review_note = data.note.strip() if data.note else None
+    proposal.reviewed_by = _actor(db)
+    proposal.reviewed_at = datetime.now().astimezone()
+    db.commit()
+    db.refresh(proposal)
+    return proposal
 
 
 @router.get("/counterparty-aliases", response_model=list[BankCounterpartyAliasResponse])

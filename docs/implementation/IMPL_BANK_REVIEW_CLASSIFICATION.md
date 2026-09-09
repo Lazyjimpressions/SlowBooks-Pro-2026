@@ -1,8 +1,8 @@
 # Implementation Plan: Bank Review Classification
 
-**Version:** 1.3
+**Version:** 1.4
 **Last Updated:** September 9, 2026
-**Status:** Phase 3 - Review, correction, and approval
+**Status:** Phase 3 complete; Phase 4 is next
 **References:**
 
 - [AI Banking Foundation](IMPL_AI_BANKING_FOUNDATION.md)
@@ -21,12 +21,12 @@ before it posts. A proposal must distinguish the transaction's intent,
 counterparty, chart account, and class while preserving the source statement
 text unchanged.
 
-For the initial operating policy:
-
-- `Sch C - Lazyj` is the only business class.
-- An explicitly approved personal/no-class decision uses no class.
-- A missing decision remains unresolved and must never be interpreted as
-  personal.
+For the initial operating policy, `Personal` is the configurable company
+default class and `Sch C - Lazyj` is the first business class. The default is
+shown as a proposal that reviewers can change, rather than applied invisibly
+inside ledger posting. Pure balance-sheet activity uses an explicit
+`not_applicable` class decision. The system `Uncategorized` class remains a
+control bucket for missing classifications, not a synonym for Personal.
 
 This plan implements the repository's existing import -> proposal -> approval
 -> guarded posting roadmap. It does not create a second accounting engine.
@@ -84,8 +84,9 @@ parent banking roadmap.
 - Cleaned names and matching tokens are derived fields with a normalizer
   version; they never replace imported text.
 - A bank row has at most one active proposal and at most one ledger posting.
-- Approval requires an explicit class resolution: assigned class or approved
-  personal/no class.
+- Approval requires an explicit class resolution: assigned class, an approved
+  legacy personal/no-class decision, or not-applicable for pure balance-sheet
+  activity.
 - At most one existing customer or vendor can be selected on a proposal.
 - A transfer cannot use an income or expense counter-account.
 - A likely invoice or bill settlement cannot use generic direct posting.
@@ -219,20 +220,21 @@ result stays `proposed` and no suggestion posts or creates a contact.
 
 ---
 
-## Phase 3 — Review, correction, and approval 🔲
+## Phase 3 — Review, correction, and approval 🟩
 
 **Deliverables:**
 
-- [ ] Add endpoints to correct, approve, reject, and supersede proposals.
-- [ ] Require approval to resolve intent, counter-account, contact decision, and
+- [x] Add endpoints to correct, approve, reject, and supersede proposals.
+- [x] Require approval to resolve intent, counter-account, contact decision, and
   class decision.
-- [ ] Add a Banking review UI showing raw evidence beside derived suggestions.
-- [ ] Make `Personal / no class` an explicit choice rather than a blank field.
-- [ ] Allow selection of existing contacts; route contact creation through the
+- [x] Add a Banking review UI showing raw evidence beside derived suggestions.
+- [x] Make class assignment, legacy personal/no-class, and balance-sheet
+  not-applicable explicit choices rather than treating a blank as a decision.
+- [x] Allow selection of existing contacts; route contact creation through the
   existing duplicate-check and create flow with separate confirmation.
-- [ ] Display why a proposal was suggested and whether it came from a rule,
+- [x] Display why a proposal was suggested and whether it came from a rule,
   deterministic matcher, AI, or a human.
-- [ ] Add safe bulk approval only for identical, fully resolved proposals; keep
+- [x] Add safe bulk approval only for identical, fully resolved proposals; keep
   transfers, owner activity, loans, investments, reimbursements, AR/AP
   candidates, and unusual amounts out of bulk approval initially.
 
@@ -246,11 +248,22 @@ POST /api/banking/proposals/{id}/supersede
 
 **Tests:**
 
-- [ ] Bookkeeper permissions and readonly rejection
-- [ ] Closing-date enforcement before posting, not during suggestion
-- [ ] Complete audit attribution
-- [ ] Review edits do not mutate imported evidence
-- [ ] UI/API parity for every required classification field
+- [x] Bookkeeper permissions and readonly rejection
+- [x] Closing-date enforcement before posting, not during suggestion
+- [x] Complete audit attribution
+- [x] Review edits do not mutate imported evidence
+- [x] UI/API parity for every required classification field
+
+**Completed:** September 9, 2026. Reviewers can inspect immutable statement
+evidence beside the full proposal, create a superseding human correction,
+approve, reject, or explicitly supersede it. Approval validates the posting
+route and active references but creates no journal entry. Contact creation is
+a separately confirmed action with duplicate detection. Safe bulk approval is
+limited to identical direct income or expense proposals at or below $1,000.
+Company settings may designate an active non-system class such as `Personal`
+as the visible default; deterministic suggestions record that use in their
+confidence components. Transfers use `not_applicable` rather than pretending
+to be Personal or Uncategorized.
 
 ---
 

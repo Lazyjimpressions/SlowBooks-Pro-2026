@@ -86,7 +86,9 @@ CounterpartyResolution = Literal[
     "unresolved", "text_only", "customer", "vendor", "not_applicable"
 ]
 CounterpartyRole = Literal["payer", "payee", "not_applicable"]
-ClassResolution = Literal["unresolved", "personal_no_class", "assigned"]
+ClassResolution = Literal[
+    "unresolved", "personal_no_class", "assigned", "not_applicable"
+]
 ProposalSource = Literal["human", "rule", "deterministic", "ai"]
 
 
@@ -165,6 +167,7 @@ class BankTransactionProposalResponse(BaseModel):
     confidence: Optional[Decimal]
     confidence_components: Optional[list[dict]]
     rationale: Optional[str]
+    review_note: Optional[str]
     normalizer_version: Optional[str]
     supersedes_id: Optional[int]
     created_by: str
@@ -183,6 +186,20 @@ class BankReviewQueueItem(BaseModel):
 
 class BankTransactionReviewResponse(BankReviewQueueItem):
     proposal_history: list[BankTransactionProposalResponse]
+
+
+class BankProposalReviewAction(StrictModel):
+    note: Optional[str] = Field(default=None, max_length=1000)
+
+
+class BankProposalBulkApprove(StrictModel):
+    proposal_ids: list[int] = Field(min_length=2, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_unique_ids(self):
+        if len(set(self.proposal_ids)) != len(self.proposal_ids):
+            raise ValueError("proposal_ids must be unique")
+        return self
 
 
 class BankCounterpartyAliasCreate(StrictModel):

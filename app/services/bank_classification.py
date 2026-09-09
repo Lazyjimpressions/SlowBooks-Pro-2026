@@ -17,10 +17,12 @@ from app.models.banking import (
     BankTransactionProposal,
 )
 from app.models.bills import Bill, BillStatus
+from app.models.classes import TxnClass
 from app.models.contacts import Customer, Vendor
 from app.models.invoices import Invoice, InvoiceStatus
 from app.services.bank_normalization import normalize_bank_text, normalize_contact_name
 from app.services.bank_rules_engine import find_matching_rule
+from app.services.settings_service import get_setting_raw
 
 ACTIVE_DOCUMENT_DAYS = 180
 
@@ -243,6 +245,8 @@ def build_bank_suggestion(db: Session, txn: BankTransaction) -> dict:
             posting_route="transfer",
             counterparty_role="not_applicable",
             counterparty_resolution="not_applicable",
+            class_resolution="not_applicable",
+            class_id=None,
             normalized_counterparty=None,
             normalized_counterparty_key=None,
             paired_bank_transaction_id=transfer.id,
@@ -412,6 +416,36 @@ def build_bank_suggestion(db: Session, txn: BankTransaction) -> dict:
             account.account_type == AccountType.INCOME and Decimal(str(txn.amount)) > 0
         ):
             suggestion.update(intent="direct_income", posting_route="direct")
+
+    # A company may intentionally use a real class (for example, Personal) as
+    # its operating default. Apply it visibly to P&L suggestions only. The
+    # immutable Uncategorized class remains the report fallback for missing
+    # data, and balance-sheet routes such as transfers stay not applicable.
+    if suggestion["intent"] in ("direct_expense", "direct_income"):
+        if suggestion["class_resolution"] == "unresolved":
+            raw_default = get_setting_raw(db, "default_class_id")
+            try:
+                default_class_id = int(raw_default) if raw_default else None
+            except (TypeError, ValueError):
+                default_class_id = None
+            default_class = (
+                db.get(TxnClass, default_class_id) if default_class_id else None
+            )
+            if (
+                default_class is not None
+                and not default_class.is_archived
+                and not default_class.is_system_default
+            ):
+                suggestion.update(
+                    class_resolution="assigned", class_id=default_class.id
+                )
+                _component(
+                    components,
+                    "company_default_class",
+                    "0.00",
+                    f"Class {default_class.id}: {default_class.name}",
+                )
+                rationale.append(f"Applied company default class {default_class.name}")
 
     _component(components, "normalization", "0.00", normalization_detail)
     score = min(

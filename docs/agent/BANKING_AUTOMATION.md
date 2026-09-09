@@ -69,11 +69,19 @@ Before a bank row can post, its approved proposal should identify:
   payment, transfer, owner activity, loan, or investment;
 - counter-account or existing document/payment match;
 - contact role and existing customer/vendor when applicable;
-- class, with an explicit personal/no-class decision distinct from unresolved;
+- class, with an explicit assigned, legacy personal/no-class, or balance-sheet
+  not-applicable decision distinct from unresolved;
 - confidence, rationale, and the rule or human approval that authorized it.
 
 The imported payee and description remain immutable evidence. Clean display
 names, aliases, and normalized counterparties are separate derived data.
+
+For companies that use classes consistently, an administrator may configure a
+normal active class as the default. The review UI and deterministic proposer
+show that default explicitly so it can be changed before approval. The system
+`Uncategorized` class remains the reporting fallback and cannot be configured
+as the company default. This preserves complete class reporting without making
+reviewers manually choose `Personal` on every routine transaction.
 
 When an existing invoice, bill, payment, expense, or deposit is involved, the
 banking workflow must call or link to that domain workflow. It must not create a

@@ -12,7 +12,10 @@ const BankingPage = {
         let html = `
             <div class="page-header">
                 <h2>Bank Accounts</h2>
-                <button class="btn btn-primary" onclick="BankingPage.showAccountForm()">+ New Bank Account</button>
+                <div class="btn-group">
+                    <a class="btn btn-secondary" href="#/bank-review">Review Imported Transactions</a>
+                    <button class="btn btn-primary" onclick="BankingPage.showAccountForm()">+ New Bank Account</button>
+                </div>
             </div>`;
 
         if (accounts.length === 0) {
@@ -141,6 +144,7 @@ const BankingPage = {
                     <button class="btn btn-secondary" onclick="App.navigate('#/banking')">Back</button>
                     <button class="btn btn-primary" onclick="BankingPage.showTxnForm(${bankAccountId})">+ Transaction</button>
                     <button class="btn btn-secondary" onclick="BankingPage.showOFXImport(${bankAccountId})">Import OFX/QFX/CSV</button>
+                    <button class="btn btn-secondary" onclick="BankingPage.renderReviewQueue(${bankAccountId})">Review Imports</button>
                     <button class="btn btn-secondary" onclick="BankingPage.startReconcile(${bankAccountId})">Reconcile</button>
                 </div>
             </div>
@@ -438,3 +442,7 @@ const BankingPage = {
         } catch (err) { toast(err.message, 'error'); }
     },
 };
+
+// Extensions such as bank_review.js and action dispatchers need an explicit
+// window export; a top-level const is not a Window property in every browser.
+window.BankingPage = BankingPage;
