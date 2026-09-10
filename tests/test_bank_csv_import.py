@@ -249,3 +249,125 @@ def test_unknown_format_reports_error(db_session):
     result = import_csv_transactions(db_session, ba.id, "Foo,Bar\n1,2\n")
     assert result["imported"] == 0
     assert result["errors"]
+
+
+# ── Bank of America: shapes the contributor's tests did not reach ────────
+#
+# The BofA parser arrived with the preamble case covered (PR #130). These
+# are the cases around it: the same export without a preamble, the metadata
+# row that carries an amount, the scan bound, and — the one that matters —
+# what the ledger does when one of these rows is added from the queue.
+
+BOFA_NO_PREAMBLE_CSV = (
+    "Date,Description,Amount,Running Bal.\n"
+    '01/20/2026,Interest Earned,4.90,"1,004.90"\n'
+    '01/22/2026,Online Banking transfer to CHK 1234,-250.00,"754.90"\n'
+)
+
+BOFA_METADATA_WITH_AMOUNT_CSV = (
+    "Date,Description,Amount,Running Bal.\n"
+    '01/01/2026,Beginning balance as of 01/01/2026,1000.00,"1,000.00"\n'
+    '01/20/2026,Interest Earned,4.90,"1,004.90"\n'
+    '01/31/2026,Ending balance as of 01/31/2026,1004.90,"1,004.90"\n'
+)
+
+
+def test_bofa_export_without_the_summary_preamble():
+    """BofA emits this export both ways. The header-scan must not require
+    a preamble to be there."""
+    result = parse_csv(BOFA_NO_PREAMBLE_CSV)
+    assert result["format"] == "bofa_detail"
+    assert [t["amount"] for t in result["transactions"]] == [
+        Decimal("4.90"),
+        Decimal("-250.00"),
+    ]
+
+
+def test_bofa_minus_sign_and_parentheses_are_the_same_debit():
+    """The summary block uses (250.00) and the detail rows use -250.00.
+    Both are money leaving the account."""
+    paren = parse_csv(
+        "Date,Description,Amount,Running Bal.\n"
+        '01/22/2026,Transfer out,(250.00),"754.90"\n'
+    )["transactions"]
+    minus = parse_csv(BOFA_NO_PREAMBLE_CSV)["transactions"]
+    assert paren[0]["amount"] == minus[1]["amount"] == Decimal("-250.00")
+
+
+def test_bofa_balance_rows_are_dropped_even_when_they_carry_an_amount():
+    """A beginning-balance row is the statement's opening figure, not a
+    deposit. BofA normally leaves its Amount blank, which the blank guard
+    catches; if it ever fills it in, importing it would overstate the
+    account by the whole opening balance and the register would show a
+    deposit nobody made."""
+    txns = parse_csv(BOFA_METADATA_WITH_AMOUNT_CSV)["transactions"]
+    assert [t["description"] for t in txns] == ["Interest Earned"]
+
+
+def test_header_scan_is_bounded_so_a_data_row_cannot_be_taken_for_a_header():
+    """The scan exists for BofA's ~8-line preamble. Past the bound the file
+    is data, and a data row that happens to spell a signature's column
+    names would truncate the import at that row."""
+    from app.services.bank_csv_import import PREAMBLE_SCAN_LINES
+
+    padding = "junk,junk2\n" * (PREAMBLE_SCAN_LINES + 5)
+    result = parse_csv(padding + "Date,Description,Amount,Running Bal.\n")
+    assert result["format"] == "unknown"
+
+    near = "junk,junk2\n" * (PREAMBLE_SCAN_LINES - 2)
+    assert parse_csv(near + "Date,Description,Amount,Running Bal.\n")["format"] == (
+        "bofa_detail"
+    )
+
+
+def test_bofa_row_added_from_the_queue_posts_the_right_way_round(
+    client, db_session, seed_accounts
+):
+    """The sign contract, end to end, through the review queue.
+
+    Everything above tests the parser in isolation. This is the test that
+    would have caught a sign inversion: a positive BofA row must DEBIT the
+    bank account (money in) and a negative one must CREDIT it. #119 is why
+    a parser test is not enough — the question is always what reached the
+    ledger."""
+    from app.models.transactions import TransactionLine
+
+    checking = seed_accounts["1000"]
+    feed = client.post(
+        "/api/banking/accounts",
+        json={"name": "BofA checking", "account_id": checking.id},
+    ).json()
+
+    out = import_csv_transactions(db_session, feed["id"], BOFA_NO_PREAMBLE_CSV)
+    assert out["imported"] == 2 and out["format"] == "bofa_detail"
+
+    rows = client.get(f"/api/banking/transactions?bank_account_id={feed['id']}").json()
+    by_amount = {Decimal(str(r["amount"])): r for r in rows}
+
+    def add(row, category):
+        r = client.post(
+            f"/api/banking/transactions/{row['id']}/add",
+            json={"category_account_id": category.id},
+        )
+        assert r.status_code in (200, 201), r.text
+        return r.json()
+
+    # +4.90 interest earned: money in, so the bank account is debited.
+    add(by_amount[Decimal("4.90")], seed_accounts["4000"])
+    # -250.00 transfer out: money out, so the bank account is credited.
+    add(by_amount[Decimal("-250.00")], seed_accounts["6000"])
+
+    lines = (
+        db_session.query(TransactionLine)
+        .filter(TransactionLine.account_id == checking.id)
+        .all()
+    )
+    debits = sum(line.debit or 0 for line in lines)
+    credits = sum(line.credit or 0 for line in lines)
+    assert debits == Decimal("4.90")
+    assert credits == Decimal("250.00")
+
+    reg = client.get(f"/api/banking/check-register?account_id={checking.id}").json()
+    assert reg["entries"][-1]["balance"] == "-245.10" or Decimal(
+        str(reg["entries"][-1]["balance"])
+    ) == Decimal("-245.10")

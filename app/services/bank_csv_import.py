@@ -55,6 +55,11 @@ PAYPAL_NEW_SIG = {
 }
 BOFA_DETAIL_SIG = {"Date", "Description", "Amount", "Running Bal."}
 
+# How far into a file parse_csv will look for the header row. Bank of
+# America puts a statement summary of roughly eight lines above it;
+# every other supported export puts the header on row 1.
+PREAMBLE_SCAN_LINES = 25
+
 
 def detect_format(headers: set[str]) -> str:
     """Detect CSV format by header column signature (not filename)."""
@@ -280,6 +285,11 @@ def parse_paypal_new(reader: csv.DictReader) -> list[dict]:
     return transactions
 
 
+# Description prefixes Bank of America uses for statement metadata rows that
+# sit inside the transaction table. These are balances, not transactions.
+_BOFA_STATEMENT_METADATA = ("beginning balance", "ending balance")
+
+
 def _parse_bofa_amount(val: str) -> Decimal:
     """Parse Bank of America amounts such as ``1,234.56`` or ``($25.00)``."""
     normalized = val.strip().replace(",", "").replace("$", "")
@@ -292,9 +302,17 @@ def parse_bofa_detail(reader: csv.DictReader) -> list[dict]:
     """Parse Bank of America's detailed checking/savings CSV export.
 
     The export starts with a statement-summary block before the real header.
-    ``parse_csv`` positions the reader at that header. A beginning-balance row
-    is statement metadata, not a transaction, so it stays out of the review
-    queue; opening balances are posted separately through the linked account.
+    ``parse_csv`` positions the reader at that header.
+
+    A beginning-balance row is statement metadata, not a transaction, so it
+    stays out of the review queue; opening balances are posted separately
+    through the linked ledger account (see ``bank_posting.post_opening_balance``).
+    Bank of America normally emits that row with an empty Amount, which the
+    blank-amount guard below already drops — but it is dropped **by
+    description as well**, because relying on the blank was relying on a
+    detail of one export layout to enforce a rule about what a transaction
+    is. If the row ever carries an amount it would otherwise import as a
+    deposit and overstate the account by the opening balance.
     """
     transactions = []
     for row in reader:
@@ -303,6 +321,8 @@ def parse_bofa_detail(reader: csv.DictReader) -> list[dict]:
         amount_str = (row.get("Amount") or "").strip()
 
         if not date_str or not amount_str:
+            continue
+        if description.lower().startswith(_BOFA_STATEMENT_METADATA):
             continue
 
         try:
@@ -349,12 +369,21 @@ def parse_csv(csv_text: str) -> dict:
         }
 
     # Some exports (notably Bank of America detail CSVs) put a statement
-    # summary before the transaction table. Locate the first recognized
-    # header instead of assuming it is physical row 1.
+    # summary before the transaction table, so the header is not physical
+    # row 1. Scan for it — but only across the first PREAMBLE_SCAN_LINES.
+    #
+    # The bound matters. A signature match is a *set subset* test, so a data
+    # row whose values happen to spell a signature's column names would be
+    # taken for a header; the further into the file we look, the more rows
+    # get that chance, and the one we would pick is the one that truncates
+    # the import. Real preambles are short (BofA's is about eight lines), so
+    # a small window buys the feature without buying that risk. It also
+    # keeps an unrecognized 100k-row export from being parsed twice before
+    # we can say "unknown format".
     reader = None
     fmt = "unknown"
     headers: set[str] = set()
-    for index, line in enumerate(lines):
+    for index, line in enumerate(lines[:PREAMBLE_SCAN_LINES]):
         candidate = next(csv.reader([line]), [])
         candidate_headers = {h.strip().strip('"').strip("'") for h in candidate if h}
         candidate_format = detect_format(candidate_headers)
