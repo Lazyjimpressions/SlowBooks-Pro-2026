@@ -102,6 +102,39 @@ may propose decisions; deterministic services validate and execute them.
 - Fresh installs and existing fork databases both reach one valid Alembic head.
 - No real company data, credentials, or statement exports enter fixtures or Git.
 
+## Migration compatibility contract
+
+The v2.10 compatibility migration for an existing fork-head database must make
+the same structural changes as upstream's canonical revision, without assuming
+that revision's operations ran:
+
+- add and backfill `accounts.bank_kind`;
+- add `transaction_lines.cleared` and `transaction_lines.reconciliation_id`;
+- rename `bank_accounts.balance` to `legacy_balance` without treating that
+  stored value as current ledger truth;
+- add `bank_transactions.transaction_line_id`;
+- add `reconciliations.account_id`, `beginning_balance`, and `cleared_total`, and
+  make the legacy feed reference nullable; and
+- link any feed that lacks a chart account to a new, non-posting bank-kind
+  account using upstream's deterministic allocation rules.
+
+It also needs fork-specific data conversion that upstream could not know about:
+
+- for a bank row with `transaction_id`, identify exactly one line on the feed's
+  linked chart account and backfill `transaction_line_id`;
+- handle paired transfers by selecting the line for each row's own linked chart
+  account;
+- preserve posted proposal references and classify successfully backfilled rows
+  as present in the books, rather than returning them to the unmatched queue;
+- carry completed reconciliation state onto mapped ledger lines where the
+  relationship is unambiguous; and
+- report ambiguous or missing bank-side lines as migration exceptions instead
+  of guessing.
+
+Rows that were only ticked in the old side ledger and have no corresponding
+ledger line cannot become cleared GL activity. Preserve their legacy evidence
+and use upstream's excluded/restore treatment until reviewed.
+
 ---
 
 ## Phase 0 — Audit and integration contract 🟨
@@ -115,11 +148,11 @@ may propose decisions; deterministic services validate and execute them.
 - [x] Identify the duplicate Alembic revision `e7f8a9b0c1d2`.
 - [x] Confirm that existing fork databases may already be stamped through
   `2c7d9e1f4a6b`.
+- [x] Inventory the structural and fork-specific data transformations required
+  for an existing fork-head database.
 
 **Remaining before implementation:**
 
-- [ ] Inventory the exact schema operations required to convert an existing
-  fork-head database to the v2.10 model.
 - [ ] Decide, with a concurrency test, whether any replacement source-uniqueness
   constraint is still required.
 - [ ] Capture disposable fresh and fork-head database fixtures containing only
@@ -229,4 +262,3 @@ the 22 overlapping source files. The first executable artifact should be a pair
 of synthetic database fixtures and a migration test proving both paths to one
 head. After that, merge upstream on a dedicated branch and adapt one vertical
 slice: import -> proposal -> approval -> upstream add -> ledger-line link.
-
