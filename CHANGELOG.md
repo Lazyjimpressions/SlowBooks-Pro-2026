@@ -7,46 +7,6 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
-### v2.10.3 — Attachments follow a company file between computers
-
-**An attachment added on Windows could not be found when the same company
-file was opened on a Mac or Linux.** `app/routes/attachments.py` stored the
-path with the platform's own separator, so a file uploaded on Windows went
-into the database as `uploads\attachments\invoice\42\report.pdf`. Every
-other platform reads that as a single filename and finds nothing. Company
-files move between machines routinely — that is the whole point of a file
-you own — so this was reachable rather than theoretical. Paths are stored in
-portable form now, and read tolerantly, so rows an existing Windows install
-already wrote keep resolving.
-
-It surfaced as a failing test on Windows that looked like a hardcoded slash
-in an assertion. It was the product hardcoding the platform.
-
-**The suite runs on Windows in CI now** (issue #121). It ran on Linux only,
-and the Windows build workflow never ran it at all, which is how a
-Windows-only encoding failure reached 2.10.0 with nothing able to catch it —
-a reader found it, not us. The job needed no extra system libraries once
-WeasyPrint's import went lazy in 2.10.2, and it enforces a skip budget,
-because a portability job's worst failure is staying green while covering
-less.
-
-Getting it green found **eight** Windows-only defects, seven of them in the
-tests rather than the product: two macOS-only modules that needed a platform
-guard, a literal path compared against one built with `Path()`, two fixtures
-that wrote a shell-script stub Windows cannot execute, one test that was
-measuring the OCR engine check rather than the PDF path it was written for,
-and — found only once the first seven were fixed and the run reached it —
-a test that **terminated the test runner**. `os.kill(pid, 0)` is a harmless
-existence check on POSIX and a process kill on Windows, and the test drove a
-POSIX-only watcher with no platform guard. The launcher itself was already
-correct.
-
-**Test suite memory** (issue #124): peak 1202 MB → 698 MB and 20% faster,
-by rebinding one session factory per test instead of building two fresh ones
-that each registered an audit listener, and by not running the application's
-startup events 2,030 times for something no route reads. No shipped code
-changes; it matters because a shared CI runner has finite memory.
-
 ### v2.10.3 — You can see when there is a new version
 
 **The update notice was in the last place anyone would look.** It sat at the
@@ -58,6 +18,35 @@ opens. Deliberately a quiet banner rather than a dialog: it never blocks
 anything, and it occupies no space at all when you are up to date. The
 version you are running is shown beside the edition too, because knowing
 that is half of knowing whether there is a newer one.
+
+**Clicking an attachment returned nothing at all.** `GET
+/api/attachments/download/{id}` was declared *after*
+`GET /{entity_type}/{entity_id}`, and FastAPI matches in declaration order —
+so `/download/2` bound the first route as entity type "download", entity 2,
+and answered an empty list. The download route was never reached. You could
+attach a file and never get it back, and no test caught it because every one
+called the handler rather than the URL. Found by macbase1 during the gate
+and reproduced by skytech; the route is reordered, a test now walks the URL
+a browser walks, and a second test checks **every** route in the application
+for the same shadowing, so the class is closed rather than the instance.
+
+**The search results panel never closed.** Not on clicking away, not on
+clearing the box, not on changing page — it stayed until a reload. At rest
+it painted a two-pixel sliver under the toolbar in every session, which is
+the grey edge along the top of the desktop screenshots taken for every
+release. The JS was right all along: it adds a `hidden` class in ten places,
+and **there was no rule that hid anything**, only two element-specific ones
+for the modal and the splash. The generic rule the code has always assumed
+now exists.
+
+**The Quick Entry log was unreadable in dark theme** — near-white text on a
+hardcoded white block, about 1.1:1 in a product that documents WCAG AA
+conformance. Quick Entry exists to enter a batch and read the log back, so
+the confirmation was the thing you could not see. It follows the theme now.
+
+Both CSS defects were found by the marketing agent building the training
+videos against the installed bundle, by reading what the browser computed
+rather than what the stylesheet said.
 
 **An attachment added on Windows could not be found when the same company
 file was opened on a Mac or Linux.** `app/routes/attachments.py` stored the
