@@ -115,6 +115,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+          pip install pytest-timeout
       - name: Run pytest, and refuse a quiet rise in skips
         # A portability job's worst failure mode is staying green while
         # covering less, so the skip count is a budget rather than a
@@ -129,7 +130,9 @@ jobs:
           MAX_SKIPS: "70"
         shell: pwsh
         run: |
-          pytest -q --tb=short | Tee-Object -Variable out
+          # -v names each test as it starts, so if the process dies mid-run
+          # the log identifies exactly where. --timeout guards a hang.
+          pytest -v --timeout=120 --tb=short | Tee-Object -Variable out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $line = ($out | Select-String -Pattern '\d+ passed').Line
           Write-Host "summary: $line"
