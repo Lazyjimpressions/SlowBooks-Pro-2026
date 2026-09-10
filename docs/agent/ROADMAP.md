@@ -1,5 +1,19 @@
 # AI-first banking roadmap
 
+## Immediate priority: upstream 2.10 integration
+
+- Adopt upstream's ledger-backed bank/card register, feed matching, transfers,
+  voids, reconciliation, and control-account protections.
+- Resolve the duplicate Alembic revision and prove fresh-install and existing
+  fork-database upgrade paths before changing the installed app.
+- Adapt the completed proposal, classification, class/contact, and expanded
+  Bank Rules work onto upstream's statement queue and posting services.
+- Consolidate to one Banking UI and retire the fork's parallel stored-balance
+  and posting implementations.
+
+See [the phased integration plan](../implementation/IMPL_UPSTREAM_210_INTEGRATION.md)
+and [ADR 0004](decisions/0004-adopt-upstream-ledger-banking.md).
+
 ## Foundation
 
 - Keep imported register balances consistent and retry-safe.
