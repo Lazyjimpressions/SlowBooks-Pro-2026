@@ -7,6 +7,98 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.10.3 — Attachments follow a company file between computers
+
+**An attachment added on Windows could not be found when the same company
+file was opened on a Mac or Linux.** `app/routes/attachments.py` stored the
+path with the platform's own separator, so a file uploaded on Windows went
+into the database as `uploads\attachments\invoice\42\report.pdf`. Every
+other platform reads that as a single filename and finds nothing. Company
+files move between machines routinely — that is the whole point of a file
+you own — so this was reachable rather than theoretical. Paths are stored in
+portable form now, and read tolerantly, so rows an existing Windows install
+already wrote keep resolving.
+
+It surfaced as a failing test on Windows that looked like a hardcoded slash
+in an assertion. It was the product hardcoding the platform.
+
+**The suite runs on Windows in CI now** (issue #121). It ran on Linux only,
+and the Windows build workflow never ran it at all, which is how a
+Windows-only encoding failure reached 2.10.0 with nothing able to catch it —
+a reader found it, not us. The job needed no extra system libraries once
+WeasyPrint's import went lazy in 2.10.2, and it enforces a skip budget,
+because a portability job's worst failure is staying green while covering
+less.
+
+Getting it green found **eight** Windows-only defects, seven of them in the
+tests rather than the product: two macOS-only modules that needed a platform
+guard, a literal path compared against one built with `Path()`, two fixtures
+that wrote a shell-script stub Windows cannot execute, one test that was
+measuring the OCR engine check rather than the PDF path it was written for,
+and — found only once the first seven were fixed and the run reached it —
+a test that **terminated the test runner**. `os.kill(pid, 0)` is a harmless
+existence check on POSIX and a process kill on Windows, and the test drove a
+POSIX-only watcher with no platform guard. The launcher itself was already
+correct.
+
+**Test suite memory** (issue #124): peak 1202 MB → 698 MB and 20% faster,
+by rebinding one session factory per test instead of building two fresh ones
+that each registered an audit listener, and by not running the application's
+startup events 2,030 times for something no route reads. No shipped code
+changes; it matters because a shared CI runner has finite memory.
+
+### v2.10.3 — You can see when there is a new version
+
+**The update notice was in the last place anyone would look.** It sat at the
+bottom of the sidebar, under every menu item, so it was found only by
+someone who scrolled the whole list — which meant people stayed on old
+versions without knowing there was a newer one. It is at the **top** of the
+sidebar now, directly under the edition line, visible the moment the app
+opens. Deliberately a quiet banner rather than a dialog: it never blocks
+anything, and it occupies no space at all when you are up to date. The
+version you are running is shown beside the edition too, because knowing
+that is half of knowing whether there is a newer one.
+
+**An attachment added on Windows could not be found when the same company
+file was opened on a Mac or Linux.** `app/routes/attachments.py` stored the
+path with the platform's own separator, so a file uploaded on Windows went
+into the database as `uploads\attachments\invoice\42\report.pdf`, which
+every other platform reads as a single filename. Company files move between
+machines routinely — that is the point of a file you own — so this was
+reachable rather than theoretical. Stored in portable form now, and read
+tolerantly so rows an existing Windows install already wrote keep resolving.
+
+It surfaced as a failing test on Windows that looked like a hardcoded slash
+in an assertion. It was the product hardcoding the platform.
+
+**The suite runs on Windows in CI** (issue #121). It ran on Linux only and
+the Windows build workflow never ran it at all, which is how a Windows-only
+encoding failure reached 2.10.0 with nothing able to catch it — a reader
+found it, not us. No extra system libraries were needed once WeasyPrint's
+import went lazy in 2.10.2, and the job enforces a skip budget, because a
+portability job's worst failure is staying green while covering less.
+
+Getting it green found **eight** Windows-only defects, seven in the tests:
+two macOS-only modules needing a platform guard, a literal path compared
+against one built with `Path()`, two fixtures writing a shell-script stub
+Windows cannot execute, one test measuring the OCR engine check rather than
+the PDF path it was written for, and — reached only once the first seven
+were fixed — a test that **terminated the test runner**, because
+`os.kill(pid, 0)` is a harmless existence check on POSIX and a process kill
+on Windows. The launcher itself was already correct.
+
+**A host-dependent test on macOS**, reported by @ContractorKeith in his
+v2.10.2 review: the stock-install fallback test emptied `PATH` but left the
+real stock locations enabled, so on a Mac with Homebrew Tesseract the
+resolver correctly found `/opt/homebrew/bin/tesseract` and the assertion
+failed. Same class as the Windows findings — a test that only passed where
+the thing was absent. His isolation fix, applied with thanks.
+
+**Test suite memory** (issue #124): peak 1202 MB → 698 MB and 20% faster, by
+rebinding one session factory per test instead of building two fresh ones
+that each registered an audit listener, and by not running the application's
+startup events 2,030 times for something no route reads.
+
 ### v2.10.2 — You can edit your chart of accounts again
 
 **2.10.1 told operators "You can rename it", and through the interface they

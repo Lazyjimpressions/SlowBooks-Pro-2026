@@ -329,20 +329,56 @@ body {
 }
 
 /* Desktop-install update notice (fed by /api/system/update-check) */
+/* The update notice sits at the TOP of the sidebar. In the footer it was
+   only seen by someone who scrolled the whole menu, so people stayed on old
+   versions without knowing there was one. Deliberately a quiet banner and
+   not a dialog: apparent the moment the app opens, never blocking, and it
+   occupies no space at all when you are up to date. */
+#sidebar-update:empty { display: none; }
+
 .update-badge {
-    display: block;
-    margin-bottom: 4px;
-    padding: 3px 6px;
-    border-radius: 3px;
-    background: rgba(224, 158, 36, 0.18);
-    border: 1px solid rgba(224, 158, 36, 0.55);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 10px 0 2px;
+    padding: 7px 9px;
+    border-radius: 4px;
+    background: rgba(224, 158, 36, 0.16);
+    border: 1px solid rgba(224, 158, 36, 0.45);
+    border-left: 3px solid #e09e24;
     color: #e8b64c;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
+    line-height: 1.35;
     text-decoration: none;
     user-select: auto;
+    transition: background 120ms ease, border-color 120ms ease;
 }
-.update-badge:hover { background: rgba(224, 158, 36, 0.32); }
+
+.update-badge:hover {
+    background: rgba(224, 158, 36, 0.30);
+    border-color: rgba(224, 158, 36, 0.85);
+}
+
+.update-badge__arrow {
+    flex: 0 0 auto;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.update-badge__text { display: block; }
+
+/* The call to action is the quiet half — present, not shouting. */
+.update-badge__cta {
+    display: block;
+    margin-top: 1px;
+    font-weight: 500;
+    font-size: 10px;
+    opacity: 0.85;
+}
+
+/* Respect a reduced-motion preference by having no motion to begin with —
+   this notice never animates, pulses or slides. */
 
 /* ========================================================================
  * CONTENT AREA

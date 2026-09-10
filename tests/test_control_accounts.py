@@ -317,3 +317,39 @@ def test_renaming_a_control_account_through_the_api_the_form_uses(
     assert body["name"] == "Trade Debtors"
     assert body["account_number"] == "1100"
     assert body["is_control"] is True
+
+
+# ---------------------------------------------------------------------------
+# The update notice sits at the top of the sidebar, not the footer
+# ---------------------------------------------------------------------------
+
+
+def test_update_notice_mounts_at_the_top_of_the_sidebar():
+    """In the footer it was only seen by someone who scrolled the whole menu,
+    so people stayed on old versions without knowing. Guard the markup: the
+    mount must exist in the header, and the code must target it."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    shell = (root / "index.html").read_text(encoding="utf-8")
+    header = shell.split('class="sidebar-header"')[1].split(
+        "</div>\n                <ul"
+    )[0]
+    assert 'id="sidebar-update"' in header, "the update mount left the sidebar header"
+    assert 'id="app-version"' in header, "the running version left the sidebar header"
+
+    js = (root / "app/static/js/app.js").read_text(encoding="utf-8")
+    assert "$('#sidebar-update')" in js, "the badge is not mounted at the top"
+    # and it is still a link out, not a dialog
+    assert "update-badge" in js and 'link.target = "_blank"' in js.replace("'", '"')
+
+
+def test_update_notice_takes_no_space_when_up_to_date():
+    """An empty mount must not leave a gap in the sidebar for the majority of
+    users, who are on the current version."""
+    from pathlib import Path
+
+    css = (Path(__file__).resolve().parents[1] / "app/static/css/style.css").read_text(
+        encoding="utf-8"
+    )
+    assert "#sidebar-update:empty" in css and "display: none" in css

@@ -508,7 +508,7 @@ def test_get_intake_rejects_traversal(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def _fake_tesseract(bin_dir, body_sh: str, body_bat: str):
+def _fake_tesseract(bin_dir, body_sh: str, body_bat: str, mkdir: bool = False):
     """Write a fake `tesseract` the OS can actually execute.
 
     The suite used a `#!/bin/sh` script, which Windows cannot run — two OCR
@@ -517,6 +517,8 @@ def _fake_tesseract(bin_dir, body_sh: str, body_bat: str):
     """
     import sys as _sys
 
+    if mkdir:
+        bin_dir.mkdir(parents=True, exist_ok=True)
     if _sys.platform == "win32":
         fake = bin_dir / "tesseract.bat"
         fake.write_text(body_bat, encoding="utf-8")
@@ -724,13 +726,24 @@ def test_tesseract_cmd_falls_back_to_stock_install_dir(tmp_path, monkeypatch):
     leave tesseract off PATH; the resolver checks the stock locations."""
     monkeypatch.setenv("PATH", str(tmp_path / "empty"))
     monkeypatch.setattr(ocr_service, "_cache", {"at": 0.0, "info": None})
+    # Isolate the missing-install case from Homebrew or any other host
+    # install. Emptying PATH is not enough: the resolver's whole job is to
+    # look in the stock locations too, and /opt/homebrew/bin/tesseract is
+    # one of them — so on a Mac with Homebrew this asserted None against a
+    # resolver that was working correctly (@ContractorKeith, v2.10.2 Mac
+    # review, and flagged by him as pre-existing back on 2.9.x).
+    monkeypatch.setattr(ocr_service, "_tesseract_candidates", lambda: [])
     assert ocr_service.tesseract_cmd() is None
     assert ocr_service.tesseract_info()["available"] is False
 
-    stock = tmp_path / "Tesseract-OCR" / "tesseract"
-    stock.parent.mkdir()
-    stock.write_text("#!/bin/sh\nexit 0\n")
-    stock.chmod(0o755)
+    # The fake-install half supplies and verifies its own candidate. The stub
+    # must be executable on the host: a #!/bin/sh script is not, on Windows.
+    stock = _fake_tesseract(
+        tmp_path / "Tesseract-OCR",
+        "#!/bin/sh\nexit 0\n",
+        "@echo off\r\nexit /b 0\r\n",
+        mkdir=True,
+    )
     monkeypatch.setattr(ocr_service, "_tesseract_candidates", lambda: [stock])
     monkeypatch.setattr(ocr_service, "_cache", {"at": 0.0, "info": None})
     assert ocr_service.tesseract_cmd() == str(stock)

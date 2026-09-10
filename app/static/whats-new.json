@@ -1,4 +1,11 @@
 {
+  "2.10.3": {
+    "title": "Attachments follow a company file between computers",
+    "items": [
+      "An attachment added on Windows can now be opened when the same company file is moved to a Mac or a Linux machine — the path was being stored in a form only Windows could read",
+      "The test suite runs on Windows in our own checks now, so a fault that only appears there is caught before a release rather than by whoever hits it first"
+    ]
+  },
   "2.10.2": {
     "title": "You can edit your chart of accounts again",
     "items": [

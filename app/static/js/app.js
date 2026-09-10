@@ -607,11 +607,16 @@ const App = {
             let res = await fetch('/api/system', { credentials: 'same-origin' });
             if (!res.ok) return;
             const info = await res.json();
-            const versionEl = $('#app-version');
-            if (versionEl && info.version) {
-                versionEl.textContent = info.server_mode
-                    ? `v${info.version} · Server`
-                    : `v${info.version}`;
+            const label = info.version
+                ? (info.server_mode ? `v${info.version} · Server` : `v${info.version}`)
+                : null;
+            if (label) {
+                // The version now shows at the top of the sidebar as well as
+                // in the footer — knowing which version you are running is
+                // half of "is there a newer one".
+                [$('#app-version'), $('#app-version-footer')].forEach(el => {
+                    if (el) el.textContent = label;
+                });
             }
             if (info.server_mode) {
                 // Serving the LAN: the deployment announces itself.
@@ -649,8 +654,12 @@ const App = {
             if (!res.ok) return;
             const check = await res.json();
             if (!check.update_available || !check.download_url) return;
-            const footer = $('#sidebar-footer');
-            if (!footer || footer.querySelector('.update-badge')) return;
+            // Top of the sidebar, not the footer: in the footer this was
+            // only seen by someone who scrolled the whole menu, so people
+            // stayed on old versions without knowing. Deliberately a quiet
+            // banner rather than a dialog — visible on open, never blocking.
+            const mount = $('#sidebar-update') || $('#sidebar-footer');
+            if (!mount || mount.querySelector('.update-badge')) return;
             const link = document.createElement('a');
             // External URL: pywebview hands target="_blank" links that leave
             // 127.0.0.1 to the system browser (see desktop_shim.js).
@@ -658,8 +667,12 @@ const App = {
             link.target = '_blank';
             link.rel = 'noopener';
             link.className = 'update-badge';
-            link.textContent = `⬆ Update available — v${check.latest_version}`;
-            footer.prepend(link);
+            link.title = `You are on v${info.version || '?'} — opens the download page`;
+            link.innerHTML =
+                `<span class="update-badge__arrow" aria-hidden="true">&#8593;</span>`
+                + `<span class="update-badge__text">Version ${escapeHtml(check.latest_version)} is available`
+                + `<span class="update-badge__cta">See what changed &rarr;</span></span>`;
+            mount.appendChild(link);
         } catch (e) { /* offline or pre-auth — footer stays as shipped */ }
     },
 };
