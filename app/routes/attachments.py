@@ -172,18 +172,13 @@ async def upload_attachment(
     return attachment
 
 
-@router.get("/{entity_type}/{entity_id}", response_model=list[AttachmentResponse])
-def list_attachments(entity_type: str, entity_id: int, db: Session = Depends(get_db)):
-    return (
-        db.query(Attachment)
-        .filter(
-            Attachment.entity_type == entity_type, Attachment.entity_id == entity_id
-        )
-        .order_by(Attachment.uploaded_at.desc())
-        .all()
-    )
-
-
+# DECLARATION ORDER MATTERS HERE. FastAPI matches in the order routes are
+# declared, and "/{entity_type}/{entity_id}" will happily match
+# "/download/2" — entity_type "download", entity_id 2 — answering `[]`
+# instead of the file. That is what shipped: a user could attach a file and
+# never get it back, and no test caught it because they all called the
+# handler rather than the URL (found by macbase1, reproduced by skytech,
+# 2.10.3 gate). The literal-prefix route must stay ABOVE the catch-all.
 @router.get("/download/{attachment_id}")
 def download_attachment(attachment_id: int, db: Session = Depends(get_db)):
     attachment = db.query(Attachment).filter(Attachment.id == attachment_id).first()
@@ -198,6 +193,18 @@ def download_attachment(attachment_id: int, db: Session = Depends(get_db)):
         str(file_path),
         filename=attachment.filename,
         media_type=attachment.mime_type or "application/octet-stream",
+    )
+
+
+@router.get("/{entity_type}/{entity_id}", response_model=list[AttachmentResponse])
+def list_attachments(entity_type: str, entity_id: int, db: Session = Depends(get_db)):
+    return (
+        db.query(Attachment)
+        .filter(
+            Attachment.entity_type == entity_type, Attachment.entity_id == entity_id
+        )
+        .order_by(Attachment.uploaded_at.desc())
+        .all()
     )
 
 

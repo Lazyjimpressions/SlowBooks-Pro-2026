@@ -156,10 +156,27 @@ def test_macos_available_requires_the_imageio_functions(monkeypatch):
 
 # ---------------------------------------------------------------------------
 # Order and fallback
+#
+# Every test below must pin ALL THREE renderers. A test that patches one and
+# leaves the others to the host passes wherever they are absent and fails
+# where they are present — which is how
+# test_present_renderer_failing_on_this_file_is_a_file_error passed on Linux
+# and CI for two releases and failed on a Mac, where Quartz is genuinely
+# available and ran for real after the patched renderer raised (macbase1,
+# 2.10.3 gate). `no_renderers` is the floor; a test turns on what it needs.
 # ---------------------------------------------------------------------------
 
 
-def test_native_renderer_wins_over_poppler(monkeypatch):
+@pytest.fixture
+def no_renderers(monkeypatch):
+    """All three renderers absent. The starting point for every order test."""
+    monkeypatch.setattr(pdf_raster, "windows_available", lambda: False)
+    monkeypatch.setattr(pdf_raster, "macos_available", lambda: False)
+    return monkeypatch
+
+
+def test_native_renderer_wins_over_poppler(no_renderers):
+    monkeypatch = no_renderers
     monkeypatch.setattr(pdf_raster, "windows_available", lambda: True)
     monkeypatch.setattr(pdf_raster, "_windows_render", lambda d, dpi: (PNG, 1))
 
@@ -171,7 +188,8 @@ def test_native_renderer_wins_over_poppler(monkeypatch):
     assert pdf_raster.pdf_renderer(poppler_ok=True) == "windows"
 
 
-def test_native_failure_falls_back_to_poppler(monkeypatch):
+def test_native_failure_falls_back_to_poppler(no_renderers):
+    monkeypatch = no_renderers
     monkeypatch.setattr(pdf_raster, "macos_available", lambda: True)
 
     def broken(d, dpi):
@@ -182,9 +200,10 @@ def test_native_failure_falls_back_to_poppler(monkeypatch):
     assert pdf_raster.rasterize(b"x", poppler_ok=True) == (PNG, 2)
 
 
-def test_library_error_text_never_reaches_the_user(monkeypatch):
+def test_library_error_text_never_reaches_the_user(no_renderers):
     """A WinRT HRESULT or a Quartz message is not a ValueError of ours: log it,
     answer with our own words (skytech: '[WinError -2147188716] …' in a 400)."""
+    monkeypatch = no_renderers
     monkeypatch.setattr(pdf_raster, "windows_available", lambda: True)
 
     def broken(d, dpi):
@@ -199,7 +218,8 @@ def test_library_error_text_never_reaches_the_user(monkeypatch):
     assert "valid, unencrypted" in str(exc.value)
 
 
-def test_present_renderer_failing_on_this_file_is_a_file_error(monkeypatch):
+def test_present_renderer_failing_on_this_file_is_a_file_error(no_renderers):
+    monkeypatch = no_renderers
     monkeypatch.setattr(pdf_raster, "windows_available", lambda: True)
 
     def broken(d, dpi):

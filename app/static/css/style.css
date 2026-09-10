@@ -754,6 +754,28 @@ td.amount, th.amount {
     z-index: 200;
 }
 
+
+/* ------------------------------------------------------------------------
+   Utility: .hidden
+   ------------------------------------------------------------------------
+   The JS hides elements by adding this class — ten call sites across three
+   files — but there was no generic rule, only `.modal-overlay.hidden` and
+   `.splash-overlay.hidden`. Everything else kept the class and stayed on
+   screen. The global search dropdown was the visible casualty: it never
+   closed on click-away, on clearing the box, or on navigating, and at rest
+   it painted a 2px white sliver under the toolbar in every session, which
+   is the grey edge visible along the top of desktop screenshots for
+   releases. Found by the marketing agent building the training videos.
+
+   `!important` because the elements that carry this class set `display`
+   through their own rules at equal or higher specificity; without it the
+   trap is merely reset for the next component.
+
+   Note this is the .hidden CLASS. The HTML `hidden` ATTRIBUTE is separate
+   and untouched (`[hidden]` is handled by the shell's own reset).
+   ------------------------------------------------------------------------ */
+.hidden { display: none !important; }
+
 .modal-overlay.hidden { display: none; }
 
 .modal {
@@ -1202,7 +1224,13 @@ tr.clickable { cursor: pointer; }
     max-height: 200px;
     overflow-y: auto;
     border: 1px solid var(--panel-border);
-    background: white;
+    /* Was a hardcoded `white`, which the dark theme could not override — the
+       log text is near-white there, so the running confirmation of what you
+       just saved was invisible at about 1.1:1 contrast. Quick Entry exists
+       to batch entries and read that log back, and the product documents
+       WCAG AA. Token, so both themes follow. */
+    background: var(--panel-bg);
+    color: var(--text-primary);
     padding: 4px 8px;
 }
 

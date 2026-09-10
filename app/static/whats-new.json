@@ -2,8 +2,10 @@
   "2.10.3": {
     "title": "Attachments follow a company file between computers",
     "items": [
-      "An attachment added on Windows can now be opened when the same company file is moved to a Mac or a Linux machine — the path was being stored in a form only Windows could read",
-      "The test suite runs on Windows in our own checks now, so a fault that only appears there is caught before a release rather than by whoever hits it first"
+      "The update notice moved to the top of the sidebar, where you see it when the app opens — it used to sit at the bottom of the menu, below everything, so most people never found it. The version you are running is shown there too",
+      "Attachments open again. Clicking an attachment returned nothing at all, and a file added on Windows could not be found when the same company file was opened on a Mac or Linux",
+      "The search results panel closes when you click away, clear the box or change page — it used to stay on screen until you reloaded",
+      "The Quick Entry log is readable in dark theme; it was white text on a white block"
     ]
   },
   "2.10.2": {
