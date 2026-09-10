@@ -2,6 +2,9 @@
 tuning, and the /api/system server_mode flag the UI keys its header off."""
 
 import sqlite3
+import sys
+
+import pytest
 
 from sqlalchemy import create_engine, text
 
@@ -122,6 +125,18 @@ def test_data_dir_flag_redirects_everything(tmp_path):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason=(
+        "the watcher is POSIX-only by design — desktop_launcher._serve() "
+        "guards it with `if sys.platform != 'win32'`, and this test does not. "
+        "It matters more than an unused feature: os.kill(pid, 0) is an "
+        "existence check on POSIX but TERMINATES the target on Windows, so "
+        "running this there kills processes rather than probing them — "
+        "including, via a reused parent pid, the pytest process itself. That "
+        "is what took the Windows CI job down at 84% with no summary (#121)."
+    ),
+)
 def test_parent_watcher_exits_when_parent_dies(tmp_path):
     """Real process pair: a fake 'launcher' spawns a watcher child; killing
     the launcher must take the child down within the poll interval."""
