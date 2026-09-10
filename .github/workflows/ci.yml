@@ -130,9 +130,13 @@ jobs:
           MAX_SKIPS: "70"  # 66 observed; the ceiling leaves room for one more platform guard, not for drift
         shell: pwsh
         run: |
-          # -v names each test as it starts, so if the process dies mid-run
-          # the log identifies exactly where. --timeout guards a hang.
-          pytest -v --timeout=120 --tb=short | Tee-Object -Variable out
+          # -v names each test as it starts, so a mid-run death is identified
+          # in the log rather than guessed at. The timeout is generous because
+          # the alembic migration tests walk 36 migrations against a real file
+          # and take ~3 s on Linux but far longer here — a Windows runner's
+          # file I/O with real-time scanning is the difference. 300 s catches a
+          # genuine hang without failing an honestly slow test.
+          pytest -q --timeout=300 --tb=short | Tee-Object -Variable out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $line = ($out | Select-String -Pattern '\d+ passed').Line
           Write-Host "summary: $line"
