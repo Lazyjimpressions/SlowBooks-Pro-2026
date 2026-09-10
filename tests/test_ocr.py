@@ -329,12 +329,27 @@ def test_scan_pdf_without_any_renderer_400(client, monkeypatch, tmp_path):
     platform (Linux wording here; see test_pdf_raster for the others)."""
     from app.services import pdf_raster
 
+    from app.services import ocr_engines
+
     monkeypatch.setattr(ocr_service, "INTAKE_DIR", tmp_path)
     monkeypatch.setattr(ocr_service, "tesseract_available", lambda: True)
     monkeypatch.setattr(ocr_service, "poppler_available", lambda: False)
     monkeypatch.setattr(pdf_raster, "windows_available", lambda: False)
     monkeypatch.setattr(pdf_raster, "macos_available", lambda: False)
     monkeypatch.setattr(pdf_raster.sys, "platform", "linux")
+
+    # The route answers 200 with ocr_available=False when the ENGINE is
+    # unavailable, before it ever reaches the rasterizer — which is what a box
+    # without tesseract does, and why this test failed on Windows (#121).
+    # Give it a working engine so the PDF path is the thing under test.
+    class _Engine:
+        def unavailable_reason(self):
+            return None
+
+        def recognize(self, data):
+            return "irrelevant — the rasterizer must refuse first"
+
+    monkeypatch.setattr(ocr_engines, "get_engine", lambda *_a, **_k: _Engine())
     r = client.post(
         "/api/ocr/receipt",
         files={"file": ("receipt.pdf", b"%PDF-1.4 fake", "application/pdf")},
@@ -493,6 +508,25 @@ def test_get_intake_rejects_traversal(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+def _fake_tesseract(bin_dir, body_sh: str, body_bat: str):
+    """Write a fake `tesseract` the OS can actually execute.
+
+    The suite used a `#!/bin/sh` script, which Windows cannot run — two OCR
+    tests failed there for that reason alone (issue #121). On Windows the
+    shim is a .bat, which is what `shutil.which` finds and subprocess runs.
+    """
+    import sys as _sys
+
+    if _sys.platform == "win32":
+        fake = bin_dir / "tesseract.bat"
+        fake.write_text(body_bat, encoding="utf-8")
+    else:
+        fake = bin_dir / "tesseract"
+        fake.write_text(body_sh, encoding="utf-8")
+        fake.chmod(0o755)
+    return fake
+
+
 def test_direct_subprocess_tesseract(tmp_path, monkeypatch):
     """Prove the no-wrapper design: a fake `tesseract` on PATH is invoked via
     subprocess with stdin/stdout, and its stdout becomes the OCR text. This
@@ -500,8 +534,8 @@ def test_direct_subprocess_tesseract(tmp_path, monkeypatch):
     real binary — so it runs in CI even when tesseract is absent."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    fake = bin_dir / "tesseract"
-    fake.write_text(
+    _fake_tesseract(
+        bin_dir,
         "#!/bin/sh\n"
         'if [ "$1" = "--version" ]; then\n'
         '  echo "tesseract 9.9.9"\n'
@@ -512,10 +546,14 @@ def test_direct_subprocess_tesseract(tmp_path, monkeypatch):
         "  exit 0\n"
         "fi\n"
         "cat > /dev/null\n"
-        'printf "FAKE MERCHANT\\nTOTAL $42.00\\n"\n'
+        'printf "FAKE MERCHANT\\nTOTAL $42.00\\n"\n',
+        "@echo off\r\n"
+        'if "%~1"=="--version" (echo tesseract 9.9.9 & exit /b 0)\r\n'
+        'if "%~1"=="--list-langs" (echo eng & exit /b 0)\r\n'
+        "echo FAKE MERCHANT\r\n"
+        "echo TOTAL $42.00\r\n",
     )
-    fake.chmod(0o755)
-    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
     # tesseract_info is cached for 60s — force a fresh probe against the fake
     monkeypatch.setattr(ocr_service, "_cache", {"at": 0.0, "info": None})
 
@@ -534,10 +572,12 @@ def test_ocr_image_bytes_failure_raises(tmp_path, monkeypatch):
     """A nonzero tesseract exit surfaces as OCRRuntimeError, not a crash."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    fake = bin_dir / "tesseract"
-    fake.write_text("#!/bin/sh\necho 'bad image data' >&2\nexit 2\n")
-    fake.chmod(0o755)
-    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ.get('PATH', '')}")
+    _fake_tesseract(
+        bin_dir,
+        "#!/bin/sh\necho 'bad image data' >&2\nexit 2\n",
+        "@echo off\r\necho bad image data 1>&2\r\nexit /b 2\r\n",
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
     monkeypatch.setattr(ocr_service, "_cache", {"at": 0.0, "info": None})
 
     import pytest

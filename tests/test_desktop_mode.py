@@ -11,6 +11,7 @@
 
 import json
 import os
+from pathlib import Path
 import sqlite3
 
 import pytest
@@ -78,7 +79,9 @@ def test_macos_frozen_runtime_uses_bundle_dylibs_and_writable_font_cache(
     fonts_conf = config_dir / "fonts.conf"
     assert os.environ["FONTCONFIG_FILE"] == str(fonts_conf)
     contents = fonts_conf.read_text(encoding="utf-8")
-    assert "/System/Library/Fonts" in contents
+    # Path("/System/Library/Fonts") stringifies with backslashes on Windows,
+    # so compare the way the launcher built it rather than a literal (#121).
+    assert str(Path("/System/Library/Fonts")) in contents
     assert str(config_dir / "fontconfig-cache") in contents
 
 
