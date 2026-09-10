@@ -79,6 +79,69 @@ jobs:
           path: coverage.xml
           retention-days: 7
 
+  # ---------------------------------------------------------------------------
+  # The suite on Windows (issue #121).
+  #
+  # Why this job exists: pytest ran on Linux only, and the Windows build
+  # workflow never ran the suite at all. A reader on Windows found eight tests
+  # that failed there and nowhere else (#119, note 2) — an encoding class that
+  # was green on every pull request and broken for anyone on that platform.
+  #
+  # It became possible once WeasyPrint's import went lazy: importing the app no
+  # longer needs pango/cairo/gobject, so no GTK staging is required here. And it
+  # became green once six portability defects in the tests were fixed, plus one
+  # real product bug they were reporting honestly (attachment paths stored with
+  # the platform separator).
+  #
+  # Deliberately WITHOUT tesseract and poppler. The Linux job installs both and
+  # runs the OCR integration tests; this job is here to catch platform
+  # assumptions — path separators, executable formats, `sys.platform` — and a
+  # smaller surface makes it faster and less prone to unrelated breakage. The
+  # skip count is therefore higher here than on Linux by design. If it changes,
+  # something changed in the suite, not in the runner.
+  #
+  # Verified on real Windows before wiring: 2030 tests, 0 failed, 65 skipped.
+  # ---------------------------------------------------------------------------
+  test-windows:
+    name: Test on Windows (portability)
+    runs-on: windows-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run pytest, and refuse a quiet rise in skips
+        # A portability job's worst failure mode is staying green while
+        # covering less, so the skip count is a budget rather than a
+        # curiosity. 65 is what real Windows produced when this was wired
+        # (macOS-only tests, and the OCR/PDF paths whose binaries this image
+        # deliberately does not carry). A rise means something started
+        # skipping that used to run — investigate before raising the number.
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          SESSION_SECRET_KEY: ci-secret-key
+          RATE_LIMIT_ENABLED: "0"
+          MAX_SKIPS: "70"
+        shell: pwsh
+        run: |
+          pytest -q --tb=short | Tee-Object -Variable out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $line = ($out | Select-String -Pattern '\d+ passed').Line
+          Write-Host "summary: $line"
+          if ($line -match '(\d+) skipped') {
+            $skips = [int]$Matches[1]
+            Write-Host "skipped: $skips (budget $env:MAX_SKIPS)"
+            if ($skips -gt [int]$env:MAX_SKIPS) {
+              Write-Error "skip count $skips exceeds the budget of $env:MAX_SKIPS — something that used to run is now skipping"
+              exit 1
+            }
+          }
+
   pip-audit:
     name: Dependency vulnerability scan
     runs-on: ubuntu-latest
