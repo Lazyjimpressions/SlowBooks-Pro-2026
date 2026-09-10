@@ -209,7 +209,7 @@ const SettingsPage = {
                     <h3>QuickBooks Online</h3>
                     <div style="font-size:10px; color:var(--text-muted); margin-bottom:8px;">
                         Configure your Intuit Developer app credentials for QBO integration.
-                        Get these from <a href="https://developer.intuit.com" target="_blank" style="color:var(--qb-blue);">developer.intuit.com</a>.
+                        Get these from <a href="https://developer.intuit.com" target="_blank" style="color:var(--text-link);">developer.intuit.com</a>.
                     </div>
                     <div class="form-grid">
                         <div class="form-group"><label>Enable QBO Integration</label>
@@ -660,7 +660,7 @@ const SettingsPage = {
                     ? ` &middot; PDFs: ${escapeHtml(pdfNames[s.pdf] || s.pdf)}`
                     : '<div style="font-size:11px; color:#b45309; margin-top:4px;">PDF scanning is not available on this machine (images still scan). '
                       + 'Linux: <code>sudo apt-get install poppler-utils</code>; other platforms: <code>brew install poppler</code> / poppler for Windows on PATH.</div>';
-                el.innerHTML = `<strong style="color:#166534;">${escapeHtml(engineLabel)} is ready</strong>`
+                el.innerHTML = `<strong style="color:var(--text-success);">${escapeHtml(engineLabel)} is ready</strong>`
                     + (s.version ? ` <span style="color:var(--text-muted);">(${escapeHtml(s.version)})</span>` : '')
                     + ` &middot; languages: ${escapeHtml(langs)}`
                     + pdfNote;

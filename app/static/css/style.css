@@ -40,6 +40,13 @@
     --qb-blue:        #336699;
     --qb-blue-light:  #4a7fb5;
     --qb-blue-accent: #5b9bd5;
+    /* Link colour. There was no rule for a bare <a> at all, so the browser
+       chose — and its default #0000EE sits at 1.73:1 on the dark panel,
+       against a product documenting WCAG AA. Attachment filenames, the
+       SimpleFIN bridge link and "Get a key" are all bare anchors.
+       Measured: 12.6:1 here, 7.2:1 in dark. (macbase1, 2.10.3 gate) */
+    --text-link:      #003366;
+    --text-success:   #166534;   /* 7.13:1 on white */
     --qb-teal:        #669999;
     --qb-green:       #339966;
     --qb-green-dark:  #2d7d56;
@@ -310,7 +317,9 @@ body {
     padding: 8px 14px;
     border-top: 1px solid rgba(255,255,255,0.08);
     font-size: 9px;
-    color: rgba(255,255,255,0.25);
+    /* 0.25 alpha measured 2.53:1 against the sidebar. 0.50 is 5.24:1 —
+       still clearly secondary, now legible. */
+    color: rgba(255,255,255,0.50);
     text-align: center;
     user-select: none;
 }
@@ -754,6 +763,17 @@ td.amount, th.amount {
     z-index: 200;
 }
 
+
+/* A bare <a> had no rule anywhere, so the user agent picked the colour and
+   the dark theme had no way to change it — 1.73:1 (macbase1's sweep, which
+   found 58 elements below AA from three causes; this was the worst).
+   Components with their own link styling are unaffected: they set `color`
+   at higher specificity. */
+a {
+    color: var(--text-link);
+}
+
+a:hover { text-decoration: underline; }
 
 /* ------------------------------------------------------------------------
    Utility: .hidden

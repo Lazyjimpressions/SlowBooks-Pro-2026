@@ -73,3 +73,82 @@ def test_the_tokens_the_log_relies_on_are_themed(token):
     assert (
         token in STYLE and token in DARK
     ), f"{token} must be defined in both themes for #qe-log to follow them"
+
+
+# ---------------------------------------------------------------------------
+# Dark-theme contrast (issue #41, macbase1's sweep)
+# ---------------------------------------------------------------------------
+
+
+def _ratio(fg, bg):
+    def lum(c):
+        def ch(v):
+            v /= 255
+            return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+
+        return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2])
+
+    hi, lo = max(lum(fg), lum(bg)), min(lum(fg), lum(bg))
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def _hex(s):
+    s = s.lstrip("#")
+    return tuple(int(s[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def _token(css, name):
+    import re
+
+    m = re.search(rf"{name}:\s*(#[0-9a-fA-F]{{6}})", css)
+    assert m, f"{name} is not defined"
+    return _hex(m.group(1))
+
+
+def test_a_bare_link_has_a_rule_at_all():
+    """There was no rule for a bare `<a>` anywhere, so the browser chose —
+    and its default #0000EE is 1.73:1 on the dark panel. Attachment
+    filenames are bare anchors, which made this release's own feature hard
+    to read in dark theme."""
+    import re
+
+    assert re.search(
+        r"^a\s*\{[^}]*color:\s*var\(--text-link\)", STYLE, re.M
+    ), "no bare `a` rule — the user agent picks the link colour again"
+
+
+def test_link_and_success_tokens_pass_AA_in_both_themes():
+    """The product documents WCAG AA. These are the colours #41 measured
+    below it; pin the ratios so a future palette change cannot quietly undo
+    the fix."""
+    checks = [
+        ("--text-link", STYLE, (255, 255, 255), "light"),
+        ("--text-link", DARK, (30, 32, 40), "dark"),
+        ("--text-success", STYLE, (255, 255, 255), "light"),
+        ("--text-success", DARK, (30, 32, 40), "dark"),
+    ]
+    for name, css, bg, theme in checks:
+        r = _ratio(_token(css, name), bg)
+        assert r >= 4.5, f"{name} in {theme} is {r:.2f}:1, below AA's 4.5"
+
+
+def test_the_dark_sidebar_footer_is_readable():
+    """It carries the running version and the feedback link at 2.53:1."""
+    import re
+
+    m = re.search(
+        r'\[data-theme="dark"\]\s*\.sidebar-footer\s*\{[^}]*color:\s*(#[0-9a-fA-F]{6})',
+        DARK,
+    )
+    assert m, "the dark sidebar-footer rule is gone — update this test"
+    r = _ratio(_hex(m.group(1)), (20, 22, 28))
+    assert r >= 4.5, f"the dark sidebar footer is {r:.2f}:1, below AA"
+
+
+def test_no_inline_style_uses_the_low_contrast_blue_for_a_link():
+    """`style="color:var(--qb-blue)"` beat the stylesheet's link rule and is
+    3.86:1 in dark. Inline styles win, so they have to use the token too."""
+    js = ""
+    for f in (ROOT / "app/static/js").glob("*.js"):
+        js += f.read_text(encoding="utf-8")
+    assert 'style="color:var(--qb-blue)' not in js.replace(" ", "")

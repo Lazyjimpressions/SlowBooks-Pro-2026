@@ -12,6 +12,8 @@
     --qb-blue:        #4a7fb5;
     --qb-blue-light:  #5b9bd5;
     --qb-blue-accent: #6bb3e8;
+    --text-link:      #6bb3e8;   /* 7.15:1 on the dark panel */
+    --text-success:   #4ade80;   /* 9.32:1 — the light theme's #166534 is 2.28 here */
     --qb-teal:        #7abfbf;
     --qb-green:       #4caf7a;
     --qb-green-dark:  #3d9065;
@@ -99,7 +101,10 @@
 [data-theme="dark"] .nav-link { color: #b0bcc8; }
 [data-theme="dark"] .nav-link:hover { color: #e0e4ec; background: rgba(255,255,255,0.05); }
 [data-theme="dark"] .nav-link.active { color: #ffffff; background: rgba(90,155,213,0.2); }
-[data-theme="dark"] .sidebar-footer { color: #505868; }
+/* #505868 measured 2.53:1 against the sidebar — the footer carries the
+   running version and the "tell us" link, so it has to be readable.
+   #868d9e is 4.75:1 and still clearly secondary. (macbase1 #41) */
+[data-theme="dark"] .sidebar-footer { color: #868d9e; }
 
 /* Status bar */
 [data-theme="dark"] #statusbar {
