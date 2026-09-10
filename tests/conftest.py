@@ -141,11 +141,39 @@ from app.main import app  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# ONE session factory for the whole suite, rebound to each test's engine.
+#
+# Issue #124: the suite used to build a fresh sessionmaker per test — two of
+# them, in fact — and call register_audit_hooks() on each. That is ~4,060
+# event registrations over a run, and SQLAlchemy keeps per-target listener
+# bookkeeping for every one. Measured growth was ~1.6 MB retained per test,
+# reaching 1.2 GB by the end and never plateauing, which is what terminated
+# the suite at a random point on a memory-constrained Windows box.
+#
+# A sessionmaker can be re-pointed with .configure(bind=...), so one factory
+# serves every test and the listener is attached exactly once. Per-test
+# isolation is unchanged: the ENGINE is still new for each test, so each gets
+# its own empty in-memory database.
+#
+# The old comment here warned that id-reuse across short-lived factories made
+# `event.contains` unreliable. With one long-lived factory that hazard is gone
+# by construction rather than worked around.
+# ---------------------------------------------------------------------------
+_SUITE_SESSION_FACTORY = sessionmaker(autocommit=False, autoflush=False)
+
+
+def _shared_factory(engine):
+    from app.services.audit import register_audit_hooks
+
+    _SUITE_SESSION_FACTORY.configure(bind=engine)
+    register_audit_hooks(_SUITE_SESSION_FACTORY)  # idempotent via its sentinel
+    return _SUITE_SESSION_FACTORY
+
+
 @pytest.fixture
 def db_engine():
     """Per-test in-memory SQLite engine with full schema."""
-    from app.services.audit import register_audit_hooks
-
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -153,30 +181,18 @@ def db_engine():
     )
     Base.metadata.create_all(bind=engine)
     # Point the app module at this engine so SessionLocal-based code (audit
-    # hooks, etc.) also land in the same DB. The audit `after_flush` hook
-    # is registered against the session factory, so we must re-register it
-    # on the new factory — otherwise the audit_log mechanism is silently
-    # bypassed in tests.
+    # hooks, etc.) also lands in the same DB.
     db_module.engine = engine
-    db_module.SessionLocal = sessionmaker(
-        autocommit=False, autoflush=False, bind=engine
-    )
-    register_audit_hooks(db_module.SessionLocal)
+    db_module.SessionLocal = _shared_factory(engine)
     yield engine
     engine.dispose()
 
 
 @pytest.fixture
 def TestSession(db_engine):
-    """Per-test session factory. The `client` fixture wires get_db to this,
-    so any audit hook the production app expects must be re-attached here
-    (the registration in main.py only fires for the original SessionLocal,
-    which conftest replaces above)."""
-    from app.services.audit import register_audit_hooks
-
-    factory = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
-    register_audit_hooks(factory)
-    return factory
+    """The suite's session factory, bound to this test's engine. The `client`
+    fixture wires get_db to this."""
+    return _shared_factory(db_engine)
 
 
 @pytest.fixture
@@ -257,9 +273,11 @@ def unauthed_client(db_engine, TestSession):
     logout) where you need to start from an unauthenticated state.
     """
     _wire_app(TestSession)
-    with TestClient(app) as c:
+    c = TestClient(app)  # no lifespan — see the note on `client` below
+    try:
         yield c
-    app.dependency_overrides.clear()
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -269,6 +287,29 @@ def client(db_engine, TestSession):
     Auth setup is performed during fixture setup so every API call
     made through this client is already authenticated.
     """
+    _wire_app(TestSession)
+    # No `with`, so the app's lifespan does NOT run (issue #124). Startup does
+    # security checks, a manifest warning, the control-account check and the
+    # at-rest secret upgrader — none of which a route reads, and all of which
+    # the three tests that care call directly rather than through a client.
+    # Running it 2,030 times cost roughly 56 KB of retained memory per test
+    # and bought nothing. `lifespan_client` below is there for anything that
+    # genuinely needs startup.
+    c = TestClient(app)
+    try:
+        r = c.post("/api/auth/setup", json={"password": "test-password-123"})
+        assert r.status_code == 200, f"Auth setup failed: {r.text}"
+        yield c
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def lifespan_client(db_engine, TestSession):
+    """An authenticated client with the app's startup events actually run.
+
+    Use this only for a test that asserts on startup behaviour; `client` skips
+    the lifespan on purpose (issue #124)."""
     _wire_app(TestSession)
     with TestClient(app) as c:
         r = c.post("/api/auth/setup", json={"password": "test-password-123"})
