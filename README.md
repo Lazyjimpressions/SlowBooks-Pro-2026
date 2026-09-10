@@ -177,7 +177,7 @@ Full catalog (300+ entries) in **[docs/features.md](docs/features.md)**. Highlig
 - **Double-entry core** — auto + manual journals, closing-date
   enforcement, automatic audit log, 50-account contractor chart
 - **Banking** — the register is the ledger (entries post, feeds are a review queue, reconciliation over ledger lines), transfers, deposits, check printing,
-  OFX/QFX + Chase/PayPal CSV import with dedup, SimpleFIN bank feeds,
+  OFX/QFX + Bank of America/Chase/PayPal CSV import with dedup, SimpleFIN bank feeds,
   shared auto-categorization rules
 - **Reports & tax** — P&L (plain & by Class), Balance Sheet, Trial
   Balance, agings, GL, Cash Flow, Sales Tax with pay-to-government flow,

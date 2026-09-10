@@ -7,6 +7,11 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+**Bank of America detail CSV import.** Checking and savings detail exports
+with the bank's statement-summary preamble now import into the review queue.
+The statement's beginning-balance metadata is skipped because opening balances
+are posted separately through the linked ledger account.
+
 ### v2.12.1 — See an email template before you save it
 
 **Preview an email template edit against a real invoice, before saving it.**

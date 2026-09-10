@@ -1,5 +1,5 @@
 # ============================================================================
-# CSV Bank Transaction Import — Chase checking, Chase credit card, PayPal
+# CSV Bank Transaction Import — Bank of America, Chase, and PayPal
 # Extends Feature 18 (bank feed import) to support CSV bank statement exports.
 #
 # Column mapping & pitfalls documented in the skill. Key rules:
@@ -53,6 +53,7 @@ PAYPAL_NEW_SIG = {
     "From Email Address",
     "Name",
 }
+BOFA_DETAIL_SIG = {"Date", "Description", "Amount", "Running Bal."}
 
 
 def detect_format(headers: set[str]) -> str:
@@ -65,6 +66,8 @@ def detect_format(headers: set[str]) -> str:
         return "paypal"
     if PAYPAL_NEW_SIG.issubset(headers):
         return "paypal_new"
+    if BOFA_DETAIL_SIG.issubset(headers):
+        return "bofa_detail"
     return "unknown"
 
 
@@ -277,6 +280,50 @@ def parse_paypal_new(reader: csv.DictReader) -> list[dict]:
     return transactions
 
 
+def _parse_bofa_amount(val: str) -> Decimal:
+    """Parse Bank of America amounts such as ``1,234.56`` or ``($25.00)``."""
+    normalized = val.strip().replace(",", "").replace("$", "")
+    if normalized.startswith("(") and normalized.endswith(")"):
+        normalized = f"-{normalized[1:-1]}"
+    return Decimal(normalized)
+
+
+def parse_bofa_detail(reader: csv.DictReader) -> list[dict]:
+    """Parse Bank of America's detailed checking/savings CSV export.
+
+    The export starts with a statement-summary block before the real header.
+    ``parse_csv`` positions the reader at that header. A beginning-balance row
+    is statement metadata, not a transaction, so it stays out of the review
+    queue; opening balances are posted separately through the linked account.
+    """
+    transactions = []
+    for row in reader:
+        date_str = (row.get("Date") or "").strip()
+        description = (row.get("Description") or "").strip()
+        amount_str = (row.get("Amount") or "").strip()
+
+        if not date_str or not amount_str:
+            continue
+
+        try:
+            txn_date = parse_date(date_str)
+            amount = _parse_bofa_amount(amount_str)
+        except (ValueError, InvalidOperation) as e:
+            logger.warning("Skipping Bank of America row: %s", e)
+            continue
+
+        transactions.append(
+            {
+                "date": txn_date,
+                "amount": amount,
+                "payee": description,
+                "description": description,
+                "check_number": None,
+            }
+        )
+    return transactions
+
+
 # ── Dispatch ─────────────────────────────────────────────────────────────
 
 
@@ -293,23 +340,40 @@ def parse_csv(csv_text: str) -> dict:
     if csv_text.startswith("\ufeff"):
         csv_text = csv_text[1:]
 
-    reader = csv.DictReader(io.StringIO(csv_text))
-    if not reader.fieldnames:
+    lines = csv_text.splitlines()
+    if not lines:
         return {
             "format": "unknown",
             "transactions": [],
             "error": "Empty CSV or no headers",
         }
 
-    # Normalize headers: strip whitespace, quotes, and BOM residue
-    headers = {h.strip().strip('"').strip("'") for h in reader.fieldnames if h}
-    fmt = detect_format(headers)
+    # Some exports (notably Bank of America detail CSVs) put a statement
+    # summary before the transaction table. Locate the first recognized
+    # header instead of assuming it is physical row 1.
+    reader = None
+    fmt = "unknown"
+    headers: set[str] = set()
+    for index, line in enumerate(lines):
+        candidate = next(csv.reader([line]), [])
+        candidate_headers = {h.strip().strip('"').strip("'") for h in candidate if h}
+        candidate_format = detect_format(candidate_headers)
+        if candidate_format != "unknown":
+            headers = candidate_headers
+            fmt = candidate_format
+            reader = csv.DictReader(io.StringIO("\n".join(lines[index:])))
+            break
+
+    if reader is None:
+        first_row = next(csv.reader([lines[0]]), [])
+        headers = {h.strip().strip('"').strip("'") for h in first_row if h}
 
     parsers = {
         "chase_checking": parse_chase_checking,
         "chase_credit": parse_chase_credit,
         "paypal": parse_paypal,
         "paypal_new": parse_paypal_new,
+        "bofa_detail": parse_bofa_detail,
     }
 
     parser = parsers.get(fmt)
@@ -332,6 +396,7 @@ _IMPORT_ID_PREFIX = {
     "chase_credit": "cc",
     "paypal": "pp",
     "paypal_new": "pp",
+    "bofa_detail": "bofa",
 }
 
 
