@@ -1,4 +1,12 @@
 {
+  "2.11.1": {
+    "title": "Wave imports work, and you can copy an API token",
+    "items": [
+      "Importing from Wave's Account Transactions report now works. It read every row as empty and then reported the books as balanced, because zero equals zero — so the import appeared to check out and brought nothing in. Found and fixed by rchanks against a real six-year Wave export",
+      "A file Wave names \"Account Transactions\" is now treated as the ledger it is, instead of being mistaken for your chart of accounts. Several other exports that contain both words were being misfiled the same way",
+      "A Copy button on a newly created API token. The token is shown once and had to be selected by hand, which went wrong often enough that one person recovered theirs from a screenshot"
+    ]
+  },
   "2.11.0": {
     "title": "Record a credit from a supplier",
     "items": [

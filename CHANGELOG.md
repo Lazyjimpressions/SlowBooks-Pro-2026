@@ -7,6 +7,53 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.11.1 — Wave imports work, and you can copy an API token
+
+Both fixes in this release came from @rchanks, and both were found the way
+we most want things found: against a real file and a real workflow.
+
+**Importing from Wave brought in nothing and said it had worked.** Wave's
+**Account Transactions** report — the plain export any Wave user can pull,
+with no plan restrictions — failed on two independent faults at once.
+
+`parse_gl()` looked for `Account Name`, `Debit Amount` and `Credit Amount`.
+The report's real headers are `ACCOUNT NUMBER`, `DEBIT (In Business
+Currency)` and `CREDIT (In Business Currency)`. None matched, so every row
+parsed as an empty account with zero on both sides — and the dry run then
+reported the file **balanced**, because zero equals zero. It failed once, on
+a deduplicated message about an account named `''` that never changed no
+matter how the source file was reshaped, because the parser had never read
+the file's amounts or account names to begin with.
+
+A dry run that passes because everything is zero is worse than one that
+fails, and that lesson is not specific to Wave.
+
+The second fault was the filename. The bundle classifier checked the
+fragment `account` before `transaction`, and Wave's own export is named
+`Account Transactions.csv` — so an unambiguously-ledger file was always
+taken for the chart of accounts and collided with the real chart upload.
+Ledger fragments are checked first now.
+
+That reorder was measured rather than assumed. Across realistic export
+filenames from the four sources that share the classifier, fourteen classify
+identically and nine move, **eight of the nine from wrong to right** — so it
+corrects files beyond Wave. The ninth, a chart of accounts named something
+like `General Account List.csv`, would now be read as a ledger. That is
+inherent to first-match-wins rather than to the new order, which is right far
+more often than the old one, and it is recorded so the trade stays
+deliberate.
+
+Found while migrating a real business's several years of Wave history: a
+six-year, 2000-transaction export that now imports with a zero-difference
+trial balance.
+
+**An API token is shown exactly once, and had to be copied by hand.** It sat
+in a styled block with no button and no shortcut, so getting it meant
+triple-clicking and hoping — which failed often enough that one person
+recovered their token by screenshotting it. A secret ending up in a camera
+roll is a security outcome, not an inconvenience. There is a Copy button now,
+with a clear message to fall back on if the browser refuses.
+
 ### v2.11.0 — Record a credit from a supplier
 
 **A supplier credit had nowhere correct to go.** Reported by
