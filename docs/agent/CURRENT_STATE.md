@@ -1,9 +1,10 @@
 # Current verified state
 
-**Verified:** 2026-09-09
+**Verified:** 2026-09-10
 **Upstream source:** `VonHoltenCodes/SlowBooks-Pro-2026`  
 **Fork:** `Lazyjimpressions/SlowBooks-Pro-2026`  
-**Baseline:** upstream v2.9.4 plus completed fork banking Phases 1-6
+**Fork baseline:** upstream v2.9.4 plus completed fork banking Phases 1-6
+**Current upstream:** v2.10.3 (`d2ae5ed`)
 
 ## Repository model
 
@@ -12,8 +13,8 @@
   AI policy, business mappings, research, and deployment knowledge.
 - Local `main` is the fork integration branch and is configured to track
   `upstream/main` so upstream drift stays visible. At this audit it matches
-  `origin/main`, contains reviewed fork commits ahead of upstream, and upstream
-  has no unique commits. Feature branches push to `origin`.
+  `origin/main` but has intentionally diverged from upstream: 34 commits ahead
+  and 38 behind. Feature branches push to `origin`.
 
 ## Banking observations
 
@@ -39,13 +40,24 @@
 
 ## Active work
 
-Bank review classification Phases 0-6 are complete. PR #16 merged the release
-dependency remediation, and its exact merge commit was built and validated on
-macOS before controlled installation. PR #18 recorded the live acceptance and
-passed the full fork CI suite before merge. No feature branch is currently
-active. Future banking work remains separately scoped in the roadmap; do not
-combine merchant settlement or unapplied-payment application with the
-completed banking-review foundation.
+Bank review classification Phases 0-6 remain complete for the v2.9.4 fork.
+Upstream v2.10 introduced a ledger-backed register and new statement-review,
+transfer, void, reconciliation, and control-account services. ADR 0004 and the
+upstream 2.10 integration plan now govern the next work: adopt those upstream
+mechanics and adapt only the fork's proposal, classification, class/contact, and
+policy layer.
+
+No v2.10 code has been merged into the fork and the installed macOS app has not
+been changed by this audit. The completed v2.9.4 fork baseline is preserved at
+tag `lji-v2.9.4-ai-banking-final`. Because the only known fork database is a
+lightly populated internal test company, the chosen transition is a fresh
+upstream database and controlled re-import rather than a permanent compatibility
+migration for the duplicate revision `e7f8a9b0c1d2`.
+
+Upstream PR #130 proposes the generic Bank of America detail CSV parser. A
+follow-up commit adds a synthetic fixture derived from two real exports,
+preserves CRLF, and covers signed amounts, a thousands separator, and a quoted
+comma description. The maintainer plans to gate it after v2.11.0.
 
 ## Verification status
 
@@ -86,6 +98,8 @@ completed banking-review foundation.
 
 ## Open work
 
+- Integrate upstream v2.10.3 according to
+  `docs/implementation/IMPL_UPSTREAM_210_INTEGRATION.md`.
 - Issue #4: reconcile OFX/QFX statement balance metadata and opening balances.
 - Issue #5: filter Schedule C reporting by business class.
 - Issue #3: expose bank-register relinking and chart subaccounts in the UI.
