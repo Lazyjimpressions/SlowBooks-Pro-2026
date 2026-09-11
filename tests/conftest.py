@@ -107,6 +107,7 @@ from app.models import (  # noqa: F401,E402
     companies,
     contacts,
     credit_memos,
+    vendor_credits,
     deductions,
     document_audit as document_audit_model,
     email_log,

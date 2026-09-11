@@ -79,6 +79,7 @@ _LINKS = {
     "bill": "/#/bills/{id}",
     "payment": "/#/payments/{id}",
     "bill_payment": "/#/bill-payments/{id}",
+    "vendor_credit": "/#/vendor-credits/{id}",
     "journal": "/#/journal/{id}",
     "manual_journal": "/#/journal/{id}",
     "manual": "/#/journal/{txn}",

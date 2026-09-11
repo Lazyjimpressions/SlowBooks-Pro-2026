@@ -120,10 +120,17 @@ def test_upgrade_flags_bank_accounts_links_feeds_and_remaps_statement_lines(tmp_
     assert "transaction_line_id" in {
         r[1] for r in con.execute("PRAGMA table_info(bank_transactions)")
     }
-    assert (
-        con.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "e7f8a9b0c1d2"
-    )
+    # The upgrade ran all the way to the repo's head. Asserting a literal
+    # revision here made this test fail on the next release instead of on a
+    # real defect, so ask alembic what head is.
+    from alembic.script import ScriptDirectory
+
+    head = ScriptDirectory.from_config(cfg).get_current_head()
+    assert con.execute("SELECT version_num FROM alembic_version").fetchone()[0] == head
+    # ...and this revision is part of how it got there.
+    assert "e7f8a9b0c1d2" in {
+        r.revision for r in ScriptDirectory.from_config(cfg).walk_revisions()
+    }
     con.close()
 
 

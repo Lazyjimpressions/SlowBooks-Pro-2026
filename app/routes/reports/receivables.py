@@ -59,6 +59,7 @@ def ar_aging(as_of_date: date = Query(default=None), db: Session = Depends(get_d
                 "over_60": Decimal(0),
                 "over_90": Decimal(0),
                 "total": Decimal(0),
+                "unapplied_credits": Decimal(0),
             }
 
         days = (as_of_date - inv.due_date).days if inv.due_date else 0
@@ -73,21 +74,52 @@ def ar_aging(as_of_date: date = Query(default=None), db: Session = Depends(get_d
             aging[cid]["over_90"] += bal
         aging[cid]["total"] += bal
 
+    # Unapplied credit memos. A credit memo credits A/R the moment it is
+    # issued, so summing only invoice balances reads HIGHER than account
+    # 1100 by every credit not yet applied — the aging and the control
+    # account disagree, and the report overstates what customers owe. Found
+    # while building the payable-side twin (issue #129); fixed on both sides
+    # together so they cannot drift apart again.
+    from app.models.credit_memos import CreditMemo, CreditMemoStatus
+
+    credits = (
+        db.query(CreditMemo)
+        .filter(CreditMemo.status != CreditMemoStatus.VOID)
+        .filter(CreditMemo.date <= as_of_date)
+        .filter(CreditMemo.balance_remaining > 0)
+        .all()
+    )
+    for cm in credits:
+        cid = cm.customer_id
+        if cid not in aging:
+            aging[cid] = {
+                "customer_name": customer_names.get(cid, "Unknown"),
+                "customer_id": cid,
+                "current": Decimal(0),
+                "over_30": Decimal(0),
+                "over_60": Decimal(0),
+                "over_90": Decimal(0),
+                "total": Decimal(0),
+                "unapplied_credits": Decimal(0),
+            }
+        amt = Decimal(str(cm.balance_remaining))
+        aging[cid]["unapplied_credits"] += amt
+        # A credit has no due date: it offsets the newest bucket.
+        aging[cid]["current"] -= amt
+        aging[cid]["total"] -= amt
+
+    _COLS = ("current", "over_30", "over_60", "over_90", "total", "unapplied_credits")
     items = list(aging.values())
-    totals = {
-        "customer_name": "TOTAL",
-        "customer_id": 0,
-        "current": sum(i["current"] for i in items),
-        "over_30": sum(i["over_30"] for i in items),
-        "over_60": sum(i["over_60"] for i in items),
-        "over_90": sum(i["over_90"] for i in items),
-        "total": sum(i["total"] for i in items),
-    }
+    for item in items:
+        item.setdefault("unapplied_credits", Decimal(0))
+    totals = {"customer_name": "TOTAL", "customer_id": 0}
+    for k in _COLS:
+        totals[k] = sum(i[k] for i in items)
     # Convert Decimals to float for JSON
     for item in items:
-        for k in ("current", "over_30", "over_60", "over_90", "total"):
+        for k in _COLS:
             item[k] = float(item[k])
-    for k in ("current", "over_30", "over_60", "over_90", "total"):
+    for k in _COLS:
         totals[k] = float(totals[k])
 
     return {"as_of_date": as_of_date.isoformat(), "items": items, "totals": totals}

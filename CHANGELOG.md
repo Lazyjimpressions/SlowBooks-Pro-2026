@@ -7,6 +7,54 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.11.0 — Record a credit from a supplier
+
+**A supplier credit had nowhere correct to go.** Reported by
+@CimarronSiteServices (issue #129) while evaluating SlowBooks against
+QuickBooks Online. A vendor issues a credit for returned or short-shipped
+materials; a bill with a negative line is refused, an expense with a
+negative amount is refused, and both refusals point at credit memos — which
+only accept a customer. The reporter went looking through bills, expenses,
+credit memos, card charges and journal entries, and was right that none of
+them was the answer.
+
+**Vendor Credits are the missing document.** A bill posts DR Expense / CR
+Accounts Payable; a vendor credit is its mirror. It reduces what you owe
+that vendor the moment it is entered, and you apply it to a bill afterwards
+— or leave it on the vendor's account until there is a bill to settle.
+Applying posts nothing at all, because A/P already moved when the credit was
+issued; applying only decides which bill it pays down.
+
+The reporter also named why a manual journal entry against A/P was not good
+enough, and he was right: a journal entry moves the general ledger without
+moving the vendor sub-ledger, so A/P aging and the vendor's balance stop
+agreeing with account 2000. That is the same split as #119, and it is why
+this is a document rather than a shortcut.
+
+**Returning stock takes it off the shelf.** A bill receives inventory into
+the Inventory asset rather than an expense; a credit for returned goods
+takes it back out of Inventory, records a `return_out` movement, and drops
+the quantity on hand. Anything else would leave an asset on the balance
+sheet for goods that are no longer in the building. A credit for an
+inventory item with no asset account is refused rather than posted to an
+expense — the same refusal `create_bill` already makes, for the same reason.
+
+**Both aging reports were hiding credits, and now show them.** Found while
+building this, and confirmed before it was fixed: an unapplied credit memo
+credits A/R at the moment it is issued, but A/R aging summed only invoice
+balances. A customer with a 1,000 invoice and a 300 credit showed a ledger
+balance of 700 and an aging total of 1,000. The report overstated what
+customers owed by every credit not yet applied, and the sub-ledger did not
+tie to account 1100. The payable side would have inherited exactly the same
+hole, so both are fixed together, and both reports now carry an
+`unapplied_credits` column — because "you owe 700" and "you owe 1,000 and
+hold a 300 credit" are different facts to someone about to pay a vendor.
+
+`CONTROL` on the badge vocabulary: `.badge-issued` and `.badge-applied` had
+no CSS rule and never have. Credit memos have rendered an unstyled badge
+since the day they shipped. Vendor credits use the same two words, so both
+documents are styled now.
+
 ### v2.10.3 — You can see when there is a new version
 
 **The update notice was in the last place anyone would look.** It sat at the

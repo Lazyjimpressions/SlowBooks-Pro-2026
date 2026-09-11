@@ -53,6 +53,7 @@ from app.routes import audit, search
 
 # Phase 2: Accounts Payable
 from app.routes import purchase_orders, bills, bill_payments, credit_memos
+from app.routes import vendor_credits
 
 # Phase 3: Productivity
 from app.routes import recurring, batch_payments
@@ -776,6 +777,7 @@ app.include_router(purchase_orders.router)
 app.include_router(bills.router)
 app.include_router(bill_payments.router)
 app.include_router(credit_memos.router)
+app.include_router(vendor_credits.router)
 # Phase 3: Productivity
 app.include_router(recurring.router)
 app.include_router(batch_payments.router)

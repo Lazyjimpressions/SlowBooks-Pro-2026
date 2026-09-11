@@ -21,6 +21,7 @@ pass, and the per-integration setup guides ([Stripe](setup-stripe.md),
 - **Recurring Invoices** — Schedule automatic invoice generation (weekly/monthly/quarterly/yearly) with manual "Generate Now" or cron script
 - **Batch Payments** — Apply payments to multiple invoices across multiple customers in a single transaction
 - **Credit Memos** — Issue credits against customers, apply to invoices to reduce balance due. Proper reversing journal entries
+- **Vendor Credits** — Record a credit a supplier gave you for a return, a short shipment or an overcharge. Debits Accounts Payable and credits the expense (or Inventory, for stock going back), then applies to any of that vendor's open bills or sits on their account until there is one. Applying posts nothing — A/P moved when the credit was issued
 - **Quick Entry Mode** — Batch invoice entry for paper invoice backlog. Save & Next (Ctrl+Enter) with running log
 
 ![Invoices with IRS Pub 583 Mock Data](../screenshots/invoices.png)
@@ -470,6 +471,9 @@ All endpoints under `/api/`. Swagger docs at `/docs`. 300+ routes across 50 rout
 | `/api/bill-payments` | POST | Pay vendor bills with allocation |
 | `/api/credit-memos` | GET, POST | Credit memo CRUD |
 | `/api/credit-memos/{id}/apply` | POST | Apply credit to invoices |
+| `/api/vendor-credits` | GET, POST | Vendor credit list and create |
+| `/api/vendor-credits/{id}` | GET | One vendor credit with its lines |
+| `/api/vendor-credits/{id}/apply` | POST | Apply a vendor credit to a bill |
 
 ### Productivity
 | Endpoint | Methods | Description |
@@ -536,6 +540,7 @@ All payroll, HR, tax-form, and self-service portal endpoints are documented with
 | `/api/donors/{id}/giving-statement/pdf`, `/api/donors/giving-statements/{pdf,batch-email}` | GET, POST | Year-end giving statements |
 | `/api/invoices/{id}/write-off` | POST | Write an open balance off to Bad Debt Expense |
 | `/api/credit-memos/{id}/void` | POST | Void a credit memo (unwinds applications) |
+| `/api/vendor-credits/{id}/void` | POST | Void a vendor credit (unwinds applications, returns stock) |
 
 ### Import/Export
 | Endpoint | Methods | Description |

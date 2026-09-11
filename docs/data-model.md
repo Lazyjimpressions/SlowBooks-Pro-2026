@@ -32,6 +32,9 @@ files under `migrations/versions/`; for model code, see `app/models/`.
 | `bill_payment_allocations` | Maps bill payments to bills |
 | `credit_memos` | Customer credit memos |
 | `credit_memo_lines` | Credit memo line items |
+| `vendor_credits` | Supplier credits against Accounts Payable |
+| `vendor_credit_lines` | Vendor credit line items (carry the expense account, like bill lines) |
+| `vendor_credit_applications` | Which bill a vendor credit settled, and for how much |
 | `credit_applications` | Maps credit memos to invoices |
 | `recurring_invoices` | Recurring invoice templates |
 | `recurring_invoice_lines` | Recurring invoice line items |
@@ -68,7 +71,8 @@ files under `migrations/versions/`; for model code, see `app/models/`.
 
 `job_id` (nullable FK) lives on: transactions, transaction_lines, invoices,
 invoice_lines, bills, bill_lines, estimates, estimate_lines, purchase_orders,
-purchase_order_lines, credit_memos, recurring_invoices, time_entries.
+purchase_order_lines, credit_memos, vendor_credits, vendor_credit_lines,
+recurring_invoices, time_entries.
 `class_id` was added to transaction_lines, invoice_lines and bill_lines.
 Attribution rule for reports: `coalesce(line.job_id, transaction.job_id)`.
 Migration `e9f0a1b2c3d4_add_jobs`.

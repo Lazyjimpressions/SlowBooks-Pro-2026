@@ -1,4 +1,12 @@
 {
+  "2.11.0": {
+    "title": "Record a credit from a supplier",
+    "items": [
+      "Vendor Credits: when a supplier credits you for a return, a short shipment or an overcharge, record it as its own document. It reduces what you owe that vendor, and you choose which bill it settles — or leave it on their account for the next one",
+      "A/P and A/R aging now show credits you are holding. A credit you had not yet applied was invisible on both reports, so they read higher than the account they are supposed to agree with",
+      "Returning stock to a supplier takes it off the shelf and out of Inventory, instead of leaving an asset on the balance sheet for goods that are gone"
+    ]
+  },
   "2.10.3": {
     "title": "Attachments follow a company file between computers",
     "items": [

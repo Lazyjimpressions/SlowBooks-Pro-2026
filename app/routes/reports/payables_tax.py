@@ -143,6 +143,7 @@ def ap_aging(as_of_date: date = Query(default=None), db: Session = Depends(get_d
     try:
         from app.models.bills import Bill, BillStatus
         from app.models.contacts import Vendor
+        from app.models.vendor_credits import VendorCredit, VendorCreditStatus
 
         bills = (
             db.query(Bill)
@@ -165,6 +166,7 @@ def ap_aging(as_of_date: date = Query(default=None), db: Session = Depends(get_d
                     "over_60": Decimal(0),
                     "over_90": Decimal(0),
                     "total": Decimal(0),
+                    "unapplied_credits": Decimal(0),
                 }
 
             days = (as_of_date - bill.due_date).days if bill.due_date else 0
@@ -179,20 +181,59 @@ def ap_aging(as_of_date: date = Query(default=None), db: Session = Depends(get_d
                 aging[vid]["over_90"] += bal
             aging[vid]["total"] += bal
 
+        # Unapplied vendor credits (issue #129). A credit debits A/P the
+        # moment it is issued, so a report that only sums bill balances
+        # reads HIGHER than account 2000 by every credit not yet applied —
+        # the sub-ledger and the control account stop agreeing, which is
+        # the objection that made this a document instead of a journal
+        # entry. Shown on its own line as well as netted, because "you owe
+        # 700" and "you owe 1,000 and hold a 300 credit" are different
+        # facts to a person about to pay a vendor.
+        credits = (
+            db.query(VendorCredit)
+            .filter(VendorCredit.status != VendorCreditStatus.VOID)
+            .filter(VendorCredit.date <= as_of_date)
+            .filter(VendorCredit.balance_remaining > 0)
+            .all()
+        )
+        for vc in credits:
+            vid = vc.vendor_id
+            if vid not in aging:
+                aging[vid] = {
+                    "vendor_name": vendor_names.get(vid, "Unknown"),
+                    "vendor_id": vid,
+                    "current": Decimal(0),
+                    "over_30": Decimal(0),
+                    "over_60": Decimal(0),
+                    "over_90": Decimal(0),
+                    "total": Decimal(0),
+                    "unapplied_credits": Decimal(0),
+                }
+            amt = Decimal(str(vc.balance_remaining))
+            aging[vid]["unapplied_credits"] += amt
+            # A credit has no due date, so it reduces the newest bucket —
+            # it is money available now, not money aged.
+            aging[vid]["current"] -= amt
+            aging[vid]["total"] -= amt
+
+        _COLS = (
+            "current",
+            "over_30",
+            "over_60",
+            "over_90",
+            "total",
+            "unapplied_credits",
+        )
         items = list(aging.values())
-        totals = {
-            "vendor_name": "TOTAL",
-            "vendor_id": 0,
-            "current": sum(i["current"] for i in items),
-            "over_30": sum(i["over_30"] for i in items),
-            "over_60": sum(i["over_60"] for i in items),
-            "over_90": sum(i["over_90"] for i in items),
-            "total": sum(i["total"] for i in items),
-        }
         for item in items:
-            for k in ("current", "over_30", "over_60", "over_90", "total"):
+            item.setdefault("unapplied_credits", Decimal(0))
+        totals = {"vendor_name": "TOTAL", "vendor_id": 0}
+        for k in _COLS:
+            totals[k] = sum(i[k] for i in items)
+        for item in items:
+            for k in _COLS:
                 item[k] = float(item[k])
-        for k in ("current", "over_30", "over_60", "over_90", "total"):
+        for k in _COLS:
             totals[k] = float(totals[k])
 
         return {"as_of_date": as_of_date.isoformat(), "items": items, "totals": totals}

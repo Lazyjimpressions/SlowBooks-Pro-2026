@@ -738,6 +738,12 @@ td.amount, th.amount {
 .badge-paid    { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
 .badge-recorded { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
 .badge-void    { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+/* issued / applied: the credit-document vocabulary. These existed in the
+   status enum from the day credit memos shipped and had no rule, so every
+   credit memo has been rendering an unstyled badge. Vendor credits use the
+   same words, so both are styled here. */
+.badge-issued  { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.badge-applied { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
 .badge-pending { background: #fef3c7; color: #92400e; border: 1px solid #fbbf24; }
 .badge-accepted{ background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
 .badge-rejected{ background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }

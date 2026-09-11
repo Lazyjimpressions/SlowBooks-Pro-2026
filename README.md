@@ -172,7 +172,8 @@ Full catalog (300+ entries) in **[docs/features.md](docs/features.md)**. Highlig
 - **Accounts receivable** — invoices, estimates, payments with
   multi-invoice allocation, credit memos, recurring schedules, batch
   payments, Quick Entry for paper backlogs
-- **Accounts payable** — purchase orders, bills, bill payments, AP aging
+- **Accounts payable** — purchase orders, bills, bill payments, vendor
+  credits, AP aging
 - **Double-entry core** — auto + manual journals, closing-date
   enforcement, automatic audit log, 50-account contractor chart
 - **Banking** — the register is the ledger (entries post, feeds are a review queue, reconciliation over ledger lines), transfers, deposits, check printing,

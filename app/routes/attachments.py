@@ -32,6 +32,9 @@ _ENTITY_TYPE_DIRS = {
     "expense": "expense",
     "estimate": "estimate",
     "purchase_order": "purchase_order",
+    # The supplier's own credit note is the evidence behind a vendor credit,
+    # the same way their invoice is the evidence behind a bill.
+    "vendor_credit": "vendor_credit",
     "vendor": "vendor",
     "customer": "customer",
 }
