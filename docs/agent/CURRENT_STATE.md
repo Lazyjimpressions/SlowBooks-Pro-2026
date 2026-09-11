@@ -48,13 +48,16 @@ mechanics and adapt only the fork's proposal, classification, class/contact, and
 policy layer.
 
 No v2.10 code has been merged into the fork and the installed macOS app has not
-been changed by this audit. The two histories contain different migrations with
-the same revision ID, `e7f8a9b0c1d2`; migration reconciliation and disposable
-upgrade tests are mandatory before source integration or installation.
+been changed by this audit. The completed v2.9.4 fork baseline is preserved at
+tag `lji-v2.9.4-ai-banking-final`. Because the only known fork database is a
+lightly populated internal test company, the chosen transition is a fresh
+upstream database and controlled re-import rather than a permanent compatibility
+migration for the duplicate revision `e7f8a9b0c1d2`.
 
-Upstream PR #130 proposes the generic Bank of America detail CSV parser. It is
-open from the correct `Lazyjimpressions` account; GitGuardian passes and the
-remaining upstream checks await maintainer approval.
+Upstream PR #130 proposes the generic Bank of America detail CSV parser. A
+follow-up commit adds a synthetic fixture derived from two real exports,
+preserves CRLF, and covers signed amounts, a thousands separator, and a quoted
+comma description. The maintainer plans to gate it after v2.11.0.
 
 ## Verification status
 

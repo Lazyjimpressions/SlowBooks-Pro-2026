@@ -1,8 +1,8 @@
 # Implementation Plan: Upstream 2.10 Banking Integration
 
-**Version:** 1.0  
+**Version:** 1.1
 **Last Updated:** September 10, 2026  
-**Status:** Phase 0 audit complete; implementation not started
+**Status:** Phase 0 transition decision complete; awaiting stable upstream release
 
 **References:**
 
@@ -18,14 +18,16 @@
 
 ## Objective
 
-Integrate upstream v2.10.3 without maintaining a parallel accounting engine.
-Upstream's ledger-backed register, statement matching, transfers, voids, and
-reconciliation become authoritative. The fork retains and adapts its versioned
-proposal, classification, class/contact, and guarded AI-policy capabilities.
+Re-establish a stable upstream release as the source baseline without
+maintaining a parallel accounting engine. Upstream's ledger-backed register,
+statement matching, transfers, voids, and reconciliation become authoritative.
+The fork retains only the versioned proposal, classification, class/contact, and
+guarded AI-policy capabilities that remain useful after upstream validation.
 
-This is a controlled replacement of overlapping internals. It is not a reset of
-fork history, and it must not touch the installed macOS application or the test
-company until disposable upgrade tests pass.
+The completed v2.9.4 work remains available as an archive, not as the base for a
+forward merge. The lightly populated test company will be recreated and its
+source statements re-imported; no compatibility migration will be maintained
+solely for that experimental database.
 
 ## Verified baseline
 
@@ -44,6 +46,9 @@ Audit date: September 10, 2026.
   generic transaction-counterparty, or expanded rule capabilities.
 - Bank of America detail CSV support remains a focused upstream contribution in
   upstream PR #130.
+- Tag `lji-v2.9.4-ai-banking-final` preserves the pre-transition fork baseline.
+- PR #130 follow-up commit `b50eaba` adds a CRLF fixture derived from two real
+  exports while containing only synthetic values and descriptions.
 
 ## Target architecture
 
@@ -99,45 +104,30 @@ may propose decisions; deterministic services validate and execute them.
 - Contact creation remains a separate reviewed action.
 - Voids preserve history and cannot bypass completed reconciliation or closing
   controls.
-- Fresh installs and existing fork databases both reach one valid Alembic head.
+- The new company starts from upstream's canonical migration history and reaches
+  exactly one Alembic head.
 - No real company data, credentials, or statement exports enter fixtures or Git.
 
-## Migration compatibility contract
+## Fresh-start data contract
 
-The v2.10 compatibility migration for an existing fork-head database must make
-the same structural changes as upstream's canonical revision, without assuming
-that revision's operations ran:
-
-- add and backfill `accounts.bank_kind`;
-- add `transaction_lines.cleared` and `transaction_lines.reconciliation_id`;
-- rename `bank_accounts.balance` to `legacy_balance` without treating that
-  stored value as current ledger truth;
-- add `bank_transactions.transaction_line_id`;
-- add `reconciliations.account_id`, `beginning_balance`, and `cleared_total`, and
-  make the legacy feed reference nullable; and
-- link any feed that lacks a chart account to a new, non-posting bank-kind
-  account using upstream's deterministic allocation rules.
-
-It also needs fork-specific data conversion that upstream could not know about:
-
-- for a bank row with `transaction_id`, identify exactly one line on the feed's
-  linked chart account and backfill `transaction_line_id`;
-- handle paired transfers by selecting the line for each row's own linked chart
-  account;
-- preserve posted proposal references and classify successfully backfilled rows
-  as present in the books, rather than returning them to the unmatched queue;
-- carry completed reconciliation state onto mapped ledger lines where the
-  relationship is unambiguous; and
-- report ambiguous or missing bank-side lines as migration exceptions instead
-  of guessing.
-
-Rows that were only ticked in the old side ledger and have no corresponding
-ledger line cannot become cleared GL activity. Preserve their legacy evidence
-and use upstream's excluded/restore treatment until reviewed.
+- Take and retain a read-only, out-of-repository snapshot of the old test
+  database before any application change.
+- Record chart accounts, classes, bank/card definitions, useful reviewed rules,
+  source-file date ranges, and statement ending balances in the private
+  operations repository. Do not copy credentials or transaction data there.
+- Build the replacement company from the selected stable upstream release and
+  its canonical migrations only.
+- Recreate users and API tokens rather than copying authentication records.
+- Re-import original bank/card exports in a documented order, treating opening
+  balances exactly once under upstream's ledger workflow.
+- Reconcile every register to a source statement and compare the trial balance
+  before porting fork-only AI behavior.
+- Keep the old database and archived code available for research and discrepancy
+  investigation; never combine their ledger totals with the new company.
 
 ---
 
-## Phase 0 — Audit and integration contract 🟨
+## Phase 0 — Audit and transition contract 🟩
 
 **Completed:**
 
@@ -150,38 +140,51 @@ and use upstream's excluded/restore treatment until reviewed.
   `2c7d9e1f4a6b`.
 - [x] Inventory the structural and fork-specific data transformations required
   for an existing fork-head database.
+- [x] Choose a clean upstream database and controlled re-import instead of a
+  compatibility migration for the disposable test company.
+- [x] Archive current fork `main` at tag
+  `lji-v2.9.4-ai-banking-final`.
+- [x] Supply upstream PR #130 with a CRLF real-shape synthetic fixture.
 
-**Remaining before implementation:**
+**Exit criteria:** completed. The prior implementation is recoverable and the
+new baseline does not inherit its colliding migration history.
 
-- [ ] Decide, with a concurrency test, whether any replacement source-uniqueness
-  constraint is still required.
-- [ ] Capture disposable fresh and fork-head database fixtures containing only
-  synthetic data.
+## Phase 1 — Establish the clean upstream baseline ⬜
 
-**Exit criteria:** one reviewed migration design covers fresh install, existing
-fork upgrade, downgrade boundary, and duplicate-revision avoidance.
+- [ ] Wait for a stable upstream release after v2.11.0 that includes gated Bank
+  of America CSV support, unless the maintainer identifies a different release.
+- [ ] Create the integration branch directly from that stable upstream tag.
+- [ ] Run the upstream test, migration, lint, dependency, Docker, and packaging
+  gates before adding fork code.
+- [ ] Restore only the minimum cross-agent and public-repository security
+  controls needed locally; keep private operations documentation out of the
+  public fork.
+- [ ] Review the baseline as a deliberate fork-main transition. Do not merge the
+  archived application tree forward.
+- [ ] Promote the validated baseline to fork `main` only after its archive tag
+  and rollback instructions are verified.
 
-## Phase 1 — Merge upstream and reconcile migrations ⬜
+**Exit criteria:** fork `main` is based on a stable upstream release, contains no
+old fork migration chain, and passes upstream's own release-level checks.
 
-- [ ] Create an integration branch from current fork `main` and merge
-  `upstream/main` with an explicit merge commit.
-- [ ] Prefer upstream implementations in banking register, posting, matching,
-  transfer, reconciliation, PDF, and their tests.
-- [ ] Keep upstream `e7f8a9b0c1d2_banking_on_the_ledger.py` as the canonical
-  fresh-install revision.
-- [ ] Add a uniquely identified compatibility migration after the fork head for
-  databases whose recorded history skipped upstream's conversion operations.
-- [ ] Make compatibility operations safely conditional on schema state.
-- [ ] Produce exactly one Alembic head and test upgrade/downgrade on both
-  synthetic database paths.
-- [ ] Preserve the fork's agent docs, secret scanning, and generic BoA parser if
-  PR #130 has not landed upstream.
+## Phase 2 — Validate a fresh upstream company ⬜
 
-**Exit criteria:** upstream v2.10.3 runs on a fresh database and an upgraded
-synthetic fork database with no duplicate revisions, data loss, or stored-balance
-dependency.
+- [ ] Take a final out-of-repository snapshot of the old test database and mark
+  it read-only.
+- [ ] Complete the private configuration and re-import manifest without copying
+  transaction data or credentials into Git.
+- [ ] Create a fresh company using the untouched stable upstream build.
+- [ ] Recreate chart accounts, classes, bank/card definitions, users, and API
+  access intentionally.
+- [ ] Re-import the original statements in the recorded order.
+- [ ] Validate bank/card signs, opening balances, statement-row counts,
+  transfers, exclusions, matches, ledger balances, and reconciliation.
 
-## Phase 2 — Adapt proposal and classification services ⬜
+**Exit criteria:** the unmodified upstream application can reproduce and
+reconcile the test books from source exports. Any baseline defect is reported
+upstream before fork-only AI code is introduced.
+
+## Phase 3 — Adapt proposal and classification services ⬜
 
 - [ ] Rebase proposal relationships and status transitions onto upstream
   `BankTransaction.transaction_line_id` and match states.
@@ -196,7 +199,7 @@ dependency.
 **Exit criteria:** every unmatched statement row can receive, revise, approve,
 reject, and supersede a proposal without changing the ledger.
 
-## Phase 3 — Dispatch approved proposals through upstream workflows ⬜
+## Phase 4 — Dispatch approved proposals through upstream workflows ⬜
 
 - [ ] Map approved direct decisions to upstream statement `add` and
   `post_bank_entry` behavior.
@@ -212,7 +215,7 @@ reject, and supersede a proposal without changing the ledger.
 services, while match operations never post and held domain candidates remain
 unposted.
 
-## Phase 4 — Consolidate UI and Bank Rules ⬜
+## Phase 5 — Consolidate UI and Bank Rules ⬜
 
 - [ ] Extend upstream's Banking statement queue with proposal evidence,
   confidence, intent, account, class, and reviewed counterparty fields.
@@ -225,7 +228,7 @@ unposted.
 **Exit criteria:** users have one Banking workflow for match, add, exclude,
 classification, approval, and posting.
 
-## Phase 5 — Regression, upgrade rehearsal, and controlled rollout ⬜
+## Phase 6 — Regression and controlled rollout ⬜
 
 - [ ] Run upstream's banking invariant, register, feed-review, transfer,
   reconciliation, control-account, and migration tests.
@@ -233,7 +236,8 @@ classification, approval, and posting.
   counterparty, class, and idempotency tests.
 - [ ] Run full CI, formatting, lint, dependency audit, and secret scanning.
 - [ ] Build the exact merge candidate for macOS.
-- [ ] Snapshot the external test database and rehearse the upgrade on a copy.
+- [ ] Re-run the Phase 2 source-file import and reconciliation matrix on the
+  exact release candidate.
 - [ ] Repeat synthetic live acceptance for personal, Schedule C, direct income,
   expense, transfer, card payment, reimbursement, text-only, AR/AP hold, match,
   exclude/restore, reconciliation, void, and retry behavior.
@@ -241,8 +245,8 @@ classification, approval, and posting.
   source-row checks pass.
 
 **Exit criteria:** the integrated build passes both upstream and fork accounting
-contracts and can upgrade the test company without changing unexplained
-balances.
+contracts, and the new company reconciles to its source statements without
+unexplained balances.
 
 ## Deferred work
 
@@ -257,8 +261,9 @@ accounting regressions harder to isolate.
 
 ## Resuming this plan
 
-Start with Phase 0's exact schema-operation inventory. Do not begin by resolving
-the 22 overlapping source files. The first executable artifact should be a pair
-of synthetic database fixtures and a migration test proving both paths to one
-head. After that, merge upstream on a dedicated branch and adapt one vertical
-slice: import -> proposal -> approval -> upstream add -> ledger-line link.
+Resume at Phase 1 after upstream publishes the stable release containing the BoA
+importer. Create the working branch from that release tag, prove the untouched
+upstream baseline, and prepare the private re-import manifest. Do not resolve the
+22 old overlapping files or port the old migration chain. After the clean
+company reconciles, adapt one vertical slice: import -> proposal -> approval ->
+upstream add -> ledger-line link.

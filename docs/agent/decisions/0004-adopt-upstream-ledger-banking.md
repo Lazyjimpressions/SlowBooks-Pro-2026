@@ -25,14 +25,16 @@ engines and make every upstream release harder to integrate.
 
 The histories also contain different migrations with the same Alembic revision
 ID, `e7f8a9b0c1d2`. This is a schema-history collision, not an ordinary merge
-conflict. Existing fork databases are already stamped through `2c7d9e1f4a6b`,
-so simply retaining upstream's file would not apply its banking conversion to
-those databases.
+conflict. The only known fork database is a lightly populated internal test
+company, so preserving its experimental migration history would add permanent
+product complexity for little operational value.
 
 ## Decision
 
-Adopt upstream v2.10 ledger banking as the authoritative register, statement
-matching, transfer, void, balance, and reconciliation implementation.
+Use a stable upstream release as the new source baseline. Adopt upstream ledger
+banking as the authoritative register, statement matching, transfer, void,
+balance, and reconciliation implementation. New feature and contribution
+branches start from current upstream rather than from the archived v2.9.4 fork.
 
 Keep the fork thin by retaining only generally useful capabilities upstream does
 not yet provide:
@@ -49,13 +51,13 @@ not yet provide:
 The integrated review experience will extend upstream's statement queue. It will
 not preserve a competing register or a second standalone banking workflow.
 
-For migrations, preserve upstream `e7f8a9b0c1d2` as the canonical revision for
-fresh databases. Add a uniquely identified compatibility migration after the
-fork's current head that detects and applies the missing v2.10 banking schema for
-existing fork databases. Re-evaluate the fork's source-uniqueness index against
-upstream's statement-line link before carrying it forward. Test both a fresh
-database and a database upgraded from the current fork head before any app
-installation.
+Archive the completed fork baseline at tag
+`lji-v2.9.4-ai-banking-final`. Preserve a read-only external snapshot of the old
+test database, but do not ship a compatibility migration for its colliding
+experimental schema. Create a fresh database on the selected stable upstream
+release, recreate the small approved configuration, and re-import source
+statements under the upstream ledger model. Re-evaluate every fork capability
+against that clean baseline before porting it.
 
 Private company mappings, autonomous-posting thresholds, credentials, and
 financial data remain in `Lazyjimpressions/slowbooks-ai-ops`, not this public
@@ -82,9 +84,9 @@ fork.
 - Upstream fixes and releases remain practical to consume.
 - The fork differentiates at the AI review and accounting-policy boundary rather
   than at basic bookkeeping mechanics.
-- The first integration is a migration and regression project, not a feature
-  sprint.
+- The first integration is a clean-baseline and re-import validation project,
+  not a feature sprint.
 - Some completed fork code will deliberately be deleted or rewritten.
-- No existing test database or installed macOS app will be upgraded until both
-  database paths and accounting invariants pass on disposable copies.
-
+- The old test database remains available for research but is not upgraded.
+- No installed macOS app or active company file changes until a stable upstream
+  build passes fresh-database and re-import acceptance.

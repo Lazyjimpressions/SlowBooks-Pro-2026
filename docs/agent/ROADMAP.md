@@ -4,8 +4,9 @@
 
 - Adopt upstream's ledger-backed bank/card register, feed matching, transfers,
   voids, reconciliation, and control-account protections.
-- Resolve the duplicate Alembic revision and prove fresh-install and existing
-  fork-database upgrade paths before changing the installed app.
+- Archive the experimental v2.9.4 fork and test database; start a fresh company
+  on a stable upstream release instead of carrying the colliding migration
+  history forward.
 - Adapt the completed proposal, classification, class/contact, and expanded
   Bank Rules work onto upstream's statement queue and posting services.
 - Consolidate to one Banking UI and retire the fork's parallel stored-balance
