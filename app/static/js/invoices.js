@@ -188,15 +188,50 @@ const InvoicesPage = {
                     <div class="form-group full-width"><label>Recipient Email *</label>
                         <input name="recipient" type="email" required value="${escapeHtml(email)}"></div>
                     <div class="form-group full-width"><label>Subject</label>
-                        <input name="subject" value="${InvoicesPage.docLabel(inv)} #${escapeHtml(inv.invoice_number)} from ${escapeHtml(inv.customer_name || 'us')}"></div>
-                    <div class="form-group full-width"><label>Message</label>
-                        <textarea name="message">Please find attached Invoice #${escapeHtml(inv.invoice_number)}.</textarea></div>
+                        <input name="subject" placeholder="Loading from your template…"></div>
+                    <div class="form-group full-width"><label>Message <span class="form-hint">Appears at the top of the email. Leave it blank to send your template as it is.</span></label>
+                        <textarea name="message" oninput="InvoicesPage.queueEmailPreview(${id})"></textarea></div>
                 </div>
+                <details style="margin-top:4px;" open>
+                    <summary style="cursor:pointer; font-size:12px; font-weight:600;">Preview — this is what will be sent</summary>
+                    <div id="email-preview" style="border:1px solid var(--border); border-radius:4px; padding:10px; margin-top:6px; max-height:260px; overflow:auto; background:#fff; color:#333;">
+                        <em>Loading…</em>
+                    </div>
+                </details>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Send Email</button>
                 </div>
             </form>`);
+        InvoicesPage.refreshEmailPreview(id, true);
+    },
+
+    // The preview is rendered by the SAME server code that sends, so what an
+    // operator reads here is what the customer receives. Before #140 the
+    // dialog showed a hardcoded subject and the saved template was never
+    // loaded at all — so there was nothing to preview and no way to tell.
+    _previewTimer: null,
+
+    queueEmailPreview(id) {
+        clearTimeout(InvoicesPage._previewTimer);
+        InvoicesPage._previewTimer = setTimeout(() => InvoicesPage.refreshEmailPreview(id), 350);
+    },
+
+    async refreshEmailPreview(id, fillSubject = false) {
+        const form = $('#modal-body form');
+        if (!form) return;
+        const target = $('#email-preview');
+        try {
+            const out = await API.post(`/invoices/${id}/email-preview`, {
+                recipient: form.recipient.value || null,
+                subject: fillSubject ? null : (form.subject.value || null),
+                message: form.message.value || null,
+            });
+            if (fillSubject && !form.subject.value) form.subject.value = out.subject;
+            if (target) target.innerHTML = out.html_body;
+        } catch (err) {
+            if (target) target.textContent = `Preview unavailable: ${err.message}`;
+        }
     },
 
     async sendEmail(e, id) {

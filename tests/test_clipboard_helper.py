@@ -38,9 +38,9 @@ def test_the_helper_exists_and_is_in_utils():
     index = (ROOT / "index.html").read_text(encoding="utf-8")
     utils_at = index.index("/static/js/utils.js")
     for name in CALL_SITES:
-        assert index.index(f"/static/js/{name}") > utils_at, (
-            f"{name} is loaded before utils.js; copyToClipboard would be undefined"
-        )
+        assert (
+            index.index(f"/static/js/{name}") > utils_at
+        ), f"{name} is loaded before utils.js; copyToClipboard would be undefined"
 
 
 @pytest.mark.parametrize("name", CALL_SITES)
@@ -51,9 +51,9 @@ def test_no_page_calls_the_clipboard_api_directly(name):
     fell back to a `window.prompt`, and the other two carried two slightly
     different copies of the same check."""
     src = (JS / name).read_text(encoding="utf-8")
-    assert "navigator.clipboard" not in src, (
-        f"{name} calls navigator.clipboard directly instead of copyToClipboard()"
-    )
+    assert (
+        "navigator.clipboard" not in src
+    ), f"{name} calls navigator.clipboard directly instead of copyToClipboard()"
 
 
 def test_the_helper_names_the_insecure_context_case():
@@ -61,7 +61,7 @@ def test_the_helper_names_the_insecure_context_case():
     'clipboard unavailable', which tells a LAN user nothing they can act
     on — and they are the only people who ever see it."""
     assert "window.isSecureContext" in UTILS
-    branch = UTILS[UTILS.index("window.isSecureContext"):]
+    branch = UTILS[UTILS.index("window.isSecureContext") :]
     branch = branch[: branch.index("}")]
     assert "secure connection" in branch.lower()
 
@@ -82,9 +82,9 @@ def test_the_api_token_reveal_passes_its_element_to_the_helper():
     m = re.search(r"copyApiTokenSecret\(\)\s*\{(.+?)\n    \},", src, re.S)
     assert m, "copyApiTokenSecret() not found"
     assert "copyToClipboard(" in m.group(1)
-    assert "el)" in m.group(1), (
-        "the reveal element is not passed, so the fallback cannot select the token"
-    )
+    assert "el)" in m.group(
+        1
+    ), "the reveal element is not passed, so the fallback cannot select the token"
 
 
 def test_the_created_toast_tells_you_to_press_copy():

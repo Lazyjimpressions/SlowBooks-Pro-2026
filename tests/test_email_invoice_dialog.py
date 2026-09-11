@@ -115,6 +115,13 @@ def test_the_dialog_and_the_route_agree_on_their_fields():
         f"the dialog posts {sorted(sent - accepted)} which the route rejects; "
         f"_EmailInvoiceRequest is a StrictModel so this is a 422, not an ignore"
     )
+    # The other direction, which @mdornich found by testing his own branch
+    # against this test: it removed the Message box entirely and still passed
+    # everything here. "The page stopped sending something the route
+    # supports" was outside the window, and it is the likelier mistake now
+    # that the field works. The box existing is part of the contract.
+    assert "message" in sent, "the Email Invoice dialog no longer sends a message"
+    assert "message" in accepted, "the route no longer accepts a message"
 
 
 def test_the_operators_message_reaches_the_email_body(
@@ -144,3 +151,142 @@ def test_an_operator_message_is_escaped(client, db_session, seed_accounts, invoi
     )
     assert "<script>x</script>" not in body
     assert "&lt;script&gt;" in body
+
+
+# ── The saved template, which was never loaded by anything (#140 part 1) ──
+
+
+def _save_invoice_template(client, subject, body):
+    # Defaults are created on demand, not at install — a fresh company has no
+    # invoice_email row at all, which is why the renderer has to fall through
+    # to the built-in body rather than assume one exists.
+    client.post("/api/email-templates/seed-defaults")
+    tpls = client.get("/api/email-templates").json()
+    tpl = [t for t in tpls if t["name"] == "invoice_email"]
+    assert tpl, "the invoice_email template should be seeded"
+    r = client.put(
+        f"/api/email-templates/{tpl[0]['id']}",
+        json={"subject_template": subject, "body_template": body},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_the_saved_template_is_what_gets_sent(
+    client, db_session, seed_accounts, invoice
+):
+    """Editing `invoice_email` under Settings saved correctly and changed
+    nothing. `render_template_from_db` existed with exactly one caller — the
+    donor acknowledgment — and the invoice path went straight to the file
+    template."""
+    from app.models.invoices import Invoice
+    from app.services.email_service import render_invoice_email_parts
+    from app.services.settings_service import get_all_settings as get_settings
+
+    _save_invoice_template(
+        client,
+        "OBVIOUSLY CUSTOM {{ invoice.invoice_number }}",
+        "<p>A body nobody would write by accident.</p>",
+    )
+    inv = db_session.query(Invoice).filter(Invoice.id == invoice["id"]).first()
+    subject, body = render_invoice_email_parts(
+        inv, get_settings(db_session), db=db_session
+    )
+    assert subject.startswith("OBVIOUSLY CUSTOM")
+    assert "A body nobody would write by accident." in body
+    assert "Please find attached" not in body
+
+
+def test_without_a_database_the_built_in_body_is_used(
+    client, db_session, seed_accounts, invoice
+):
+    """The renderer must still work for callers that have no session."""
+    from app.models.invoices import Invoice
+    from app.services.email_service import render_invoice_email_parts
+    from app.services.settings_service import get_all_settings as get_settings
+
+    inv = db_session.query(Invoice).filter(Invoice.id == invoice["id"]).first()
+    _, body = render_invoice_email_parts(inv, get_settings(db_session))
+    assert "Please find attached" in body
+
+
+def test_a_broken_saved_template_does_not_stop_the_mail(
+    client, db_session, seed_accounts, invoice
+):
+    """A template is operator-authored text. A bad expression in it must not
+    be the reason an invoice never goes out."""
+    from app.models.invoices import Invoice
+    from app.services.email_service import render_invoice_email_parts
+    from app.services.settings_service import get_all_settings as get_settings
+
+    _save_invoice_template(client, "S", "{{ nope.does.not.exist | frobnicate }}")
+    inv = db_session.query(Invoice).filter(Invoice.id == invoice["id"]).first()
+    _, body = render_invoice_email_parts(inv, get_settings(db_session), db=db_session)
+    assert "Please find attached" in body, "should fall through to the built-in body"
+
+
+def test_the_note_survives_a_saved_template_that_never_mentions_it(
+    client, db_session, seed_accounts, invoice
+):
+    """The design decision, and @mdornich's call. If the note were a
+    `{{ note }}` context variable, a saved template that does not reference
+    it would drop the operator's message silently — the same failure class
+    #140 is about, moved rather than fixed. It is prepended, always."""
+    from app.models.invoices import Invoice
+    from app.services.email_service import render_invoice_email_parts
+    from app.services.settings_service import get_all_settings as get_settings
+
+    _save_invoice_template(client, "S", "<p>No mention of any note here.</p>")
+    inv = db_session.query(Invoice).filter(Invoice.id == invoice["id"]).first()
+    _, body = render_invoice_email_parts(
+        inv, get_settings(db_session), note="Ten days, as agreed.", db=db_session
+    )
+    assert "Ten days, as agreed." in body
+    assert body.index("Ten days") < body.index("No mention"), "the note goes above"
+
+
+def test_a_sales_receipt_still_uses_the_saved_invoice_template(
+    client, db_session, seed_accounts, invoice
+):
+    """#140 part three. `invoice_email_label()` answers 'Sales Receipt' for
+    that kind, so selecting a template by the document's face would skip the
+    saved template for every sales receipt — ordinary businesses, not just
+    nonprofit installs. The lookup is the fixed name `invoice_email`."""
+    from app.models.invoices import Invoice
+    from app.services.email_service import (
+        render_invoice_email_parts,
+        invoice_email_label,
+    )
+    from app.services.settings_service import get_all_settings as get_settings
+
+    _save_invoice_template(client, "S", "<p>CUSTOM BODY</p>")
+    inv = db_session.query(Invoice).filter(Invoice.id == invoice["id"]).first()
+    company = get_settings(db_session)
+
+    # Whatever the document is called, the same template is used.
+    label = invoice_email_label(inv, company)
+    _, body = render_invoice_email_parts(inv, company, db=db_session)
+    assert "CUSTOM BODY" in body, f"label was {label!r} and the template was skipped"
+
+
+def test_the_preview_returns_what_the_send_would_produce(
+    client, db_session, seed_accounts, invoice
+):
+    """A read-only endpoint that renders through the same code as the send.
+    It exists because an operator editing the template had no way to see the
+    result short of mailing a real customer."""
+    from app.models.email_log import EmailLog
+
+    _save_invoice_template(client, "SUBJ {{ invoice.invoice_number }}", "<p>BODY</p>")
+    before = db_session.query(EmailLog).count()
+
+    r = client.post(
+        f"/api/invoices/{invoice['id']}/email-preview",
+        json={"recipient": "a@b.com", "message": "Hello there."},
+    )
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["subject"] == f"SUBJ {invoice['invoice_number']}"
+    assert "BODY" in out["html_body"]
+    assert "Hello there." in out["html_body"]
+    # Read-only: nothing sent, nothing logged.
+    assert db_session.query(EmailLog).count() == before

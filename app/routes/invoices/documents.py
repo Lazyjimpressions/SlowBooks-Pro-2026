@@ -16,7 +16,7 @@ from app.routes.invoices._router import router
 
 
 class _EmailInvoiceRequest(StrictModel):
-    recipient: str
+    recipient: _Optional[str] = None
     subject: _Optional[str] = None
     # The Email Invoice dialog has always posted `message`, and this model
     # is a StrictModel — so every send from the interface was rejected 422
@@ -78,6 +78,38 @@ def invoice_print_preview(invoice_id: int, db: Session = Depends(get_db)):
     return HTMLResponse(content=html_str)
 
 
+@router.post("/{invoice_id}/email-preview")
+def email_invoice_preview(
+    invoice_id: int,
+    data: _EmailInvoiceRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Exactly what the send would produce, without sending it.
+
+    Read-only: no mail, no EmailLog row, no PDF rendered. It exists because
+    an operator editing the `invoice_email` template had no way to see the
+    result short of mailing a real customer — and for four releases the
+    template they were editing was not used at all.
+    """
+    inv = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    company = get_settings(db)
+
+    from app.services.email_service import render_invoice_email_parts
+    from app.services.payments import enabled_providers
+
+    pay_url = None
+    if inv.payment_token and enabled_providers(db):
+        pay_url = f"{str(request.base_url).rstrip('/')}/pay/{inv.payment_token}"
+
+    subject, html_body = render_invoice_email_parts(
+        inv, company, pay_url=pay_url, note=data.message, db=db, subject=data.subject
+    )
+    return {"recipient": data.recipient, "subject": subject, "html_body": html_body}
+
+
 @router.post("/{invoice_id}/email")
 def email_invoice(
     invoice_id: int,
@@ -90,13 +122,8 @@ def email_invoice(
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
     company = get_settings(db)
-    from app.services.email_service import invoice_email_label
-
-    subject = (
-        data.subject or f"{invoice_email_label(inv, company)} #{inv.invoice_number}"
-    )
     try:
-        from app.services.email_service import send_email, render_invoice_email
+        from app.services.email_service import send_email, render_invoice_email_parts
         from app.models.email_log import EmailLog
 
         pdf_bytes = generate_invoice_pdf(inv, company)
@@ -110,8 +137,16 @@ def email_invoice(
             base_url = str(request.base_url).rstrip("/")
             pay_url = f"{base_url}/pay/{inv.payment_token}"
 
-        html_body = render_invoice_email(
-            inv, company, pay_url=pay_url, note=data.message
+        # One renderer for the preview and the send, so what an operator is
+        # shown is what a customer receives. `db` is what makes the saved
+        # `invoice_email` template load at all — it never did before (#140).
+        subject, html_body = render_invoice_email_parts(
+            inv,
+            company,
+            pay_url=pay_url,
+            note=data.message,
+            db=db,
+            subject=data.subject,
         )
         # send_email() writes its own EmailLog row on every path (sent,
         # failed, and SMTP-not-configured), so the route must not log again

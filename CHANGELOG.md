@@ -7,62 +7,91 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
-### v2.11.2 — Your chart of accounts is yours
+### v2.12.0 — Your chart, your templates, your clipboard
+
+Five reader-reported defects, closed together. Two of them had been breaking
+something on every install.
 
 **A new company arrives with 57 accounts, and not one of them could be
-removed or hidden.** Reported by @tresero (issue #139), coming from hledger
-with a chart of his own and finding no way to use it.
+removed or hidden** (#139, @tresero, coming from hledger with a chart of his
+own). Delete refused every seeded account, because all 57 are flagged as
+created by the software and the rule rejected anything with that flag —
+permanently, even on a company with no transactions. Deactivate was not on
+the page at all, and our own delete error told people to "deactivate it
+instead", which the interface could not do. The only thing an operator could
+do to our chart was rename it.
 
-Delete refused every seeded account, because all 57 are flagged as created
-by the software and the rule rejected anything carrying that flag —
-permanently, even on a company with no transactions in it. Deactivate was
-not on the page at all: the account form offered number, name, type and
-description, and nothing else. Our own delete error told people to
-"deactivate it instead", which the interface could not do.
+That is the same wrong flag 2.10.2 found hiding the Edit button, in a second
+place. The gate is the control-account registry now: fifteen numbers the
+posting code resolves literally, where a document that cannot find one is
+issue #119. Those rename and deactivate but never delete. The other
+forty-two go when you say so.
 
-So the only thing an operator could do to our chart was rename it.
+Deactivate, Reactivate and Delete are on the page, with a button to show
+inactive accounts — hiding something with no way back to it is a trap.
+Delete is not offered on a control account at all, rather than offered and
+refused. And a blocked delete now names what is in the way and how many,
+rather than "referenced by other records", which told the operator nothing
+about where to go and undo it.
 
-**That is the same wrong flag 2.10.2 found hiding the Edit button, in a
-second place.** The gate is the control-account registry now, not the
-system flag: fifteen numbers the posting code resolves literally, where a
-document that cannot find one is issue #119. Those can be renamed and
-deactivated but never removed. The other forty-two are ordinary accounts and
-go when you say so.
+**The email template you save is now the email that gets sent** (#140,
+@mdornich). Editing `invoice_email` under Settings saved correctly and
+changed nothing: the invoice email was always built from a fixed layout, and
+the machinery for rendering a saved template existed with exactly one caller,
+the donor acknowledgment. Four releases of a settings page that did nothing.
 
-**Deactivate, Reactivate and Delete are on the Chart of Accounts page**, with
-a button to show inactive accounts — because hiding something with no way
-back to it is a trap, not a feature. Delete is not offered on a control
-account at all, rather than offered and then refused.
+The template is found by name and never by the document's face — selecting on
+the label would have skipped the saved template for every sales receipt,
+which is ordinary businesses and not only nonprofit installs. A template with
+a mistake in it falls through to the built-in body rather than stopping the
+mail.
 
-**Deleting names what is in the way.** An account still referenced by an
-item, a vendor default, a bank feed or a budget is refused with the count
-and the table, instead of "referenced by other records", which told the
-operator nothing about where to go and undo it. That check walks the schema
-rather than a hand-kept list: thirty-five columns across seventeen models
-reference an account today and vendor credits added one this week, so a list
-maintained by hand would be wrong within a release — and the symptom of it
-being wrong is a foreign-key violation surfacing as a server error.
+**There is a preview in the Email Invoice dialog**, rendered by the same
+server code that sends, so what an operator reads is what a customer
+receives. An operator editing a template previously had no way to see the
+result short of mailing a real customer.
 
-### Emailing an invoice failed on every install
-
-Reported by @mdornich (issue #140). The Email Invoice dialog posts a
-`message` field. The route accepts `recipient` and `subject` and rejects
-anything else. **So every send from the interface failed validation before
-it reached the sending code** — the Message box did not merely get ignored,
-it broke the button it sat on.
-
+**And emailing an invoice failed on every install.** The dialog posts a
+`message` field; the route accepted `recipient` and `subject` and rejected
+anything else, so every send failed validation before reaching the sending
+code. The Message box did not get ignored — it broke the button it sat on.
 Nothing caught it because every test called that endpoint with a payload the
-endpoint accepts, rather than the payload the page actually sends. That is
-the shape of 2.10.3's unreachable attachment route: a test of the handler is
-not a test of what the interface does. There is now a check that reads the
-fields out of the page and out of the request model and fails if they drift
-apart again.
+endpoint accepts rather than the payload the page sends, which is the shape
+of 2.10.3's unreachable attachment route.
 
-The message you type is the message that goes out, escaped on both the
-templated and fallback paths, since it is operator text landing in an HTML
-email. The rest of @mdornich's report — the saved template being ignored,
-and template selection keyed off a document label — is his branch to open,
-and it is the better fix.
+The message now appears as a paragraph at the top of the email, always,
+rather than as something a saved template has to remember to include. A
+template that forgot would have dropped it silently, which is the same defect
+wearing a different hat.
+
+**Copy buttons worked on the machine running SlowBooks and silently failed
+everywhere else** (#137). Copying to the clipboard requires a secure
+connection, and the desktop app gets one only because a loopback address
+counts as secure. Anyone reaching SlowBooks over a network address — Server
+Edition, Docker on a host address, a tablet on the Wi-Fi — got a button that
+appeared to do nothing.
+
+Nobody who could reproduce that was in a position to see it: a developer runs
+on loopback, and so does every test machine. It was found by measuring why
+the clipboard was permitted rather than being satisfied that it was.
+
+All four copy buttons go through one helper now. It names the cause when it
+knows it, and leaves the text selected so recovery is one keystroke. Two of
+the four had no fallback at all — the payment link reported a clipboard
+refusal as a server error.
+
+**The app refuses to start against a company file older than itself** (#132).
+It used to create the new tables without altering the existing ones and
+without recording the upgrade, after which the file could never be migrated
+again. The damage was silent when it happened and surfaced much later as a
+start failure with no obvious cause. Neither the desktop app nor the Docker
+image could reach it; a self-managed deployment could.
+
+**One HarfBuzz in the macOS bundle** (#141, @mdornich). Two copies of the
+same text-shaping library were being collected under one name, so whichever
+loaded first won for the whole process — and the pieces did not match, which
+killed the first PDF render on a locally built app. The build now fails
+loudly if it ever contains anything other than exactly one.
 
 ### v2.11.1 — Wave imports work, and you can copy an API token
 

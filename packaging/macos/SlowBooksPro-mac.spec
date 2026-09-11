@@ -110,6 +110,69 @@ a = Analysis(
     excludes=["psycopg2", "psycopg2_binary"],
     noarchive=False,
 )
+# ---------------------------------------------------------------------------
+# One HarfBuzz, and it must be Homebrew's (issue #141, reported by mdornich)
+# ---------------------------------------------------------------------------
+# PyInstaller collects TWO HarfBuzz builds into the bundle:
+#
+#   Contents/Frameworks/PIL/.dylibs/libharfbuzz.0.dylib   Pillow's,   ~1.81 MB
+#   Contents/Frameworks/libharfbuzz.dylib                 Homebrew's, ~1.32 MB
+#   Contents/Frameworks/libharfbuzz-subset.0.dylib        Homebrew's, ~1.36 MB
+#
+# Both answer to the install name @rpath/libharfbuzz.0.dylib, so whichever
+# loads first wins for the whole process. The `binaries` list above seeds
+# Homebrew's under the VERSIONED name, but PyInstaller's PIL hook wins the
+# filename collision and turns Contents/Frameworks/libharfbuzz.0.dylib into a
+# symlink into PIL/. Homebrew's real library then sits in the bundle under the
+# unversioned name where nothing resolves to it.
+#
+# Pango therefore gets Pillow's HarfBuzz while libharfbuzz-subset is
+# Homebrew's — and `libharfbuzz-subset` only exists in the Homebrew build. The
+# first PDF render dies in native code.
+#
+# Dropping Pillow's copy is safe, and that was checked rather than assumed:
+# the pinned pillow wheel ships neither libraqm nor libfribidi, so complex
+# shaping is off and `PIL.features.check('harfbuzz')` is False; and nothing in
+# app/ draws text with Pillow at all — it appears only in ocr_service.py and
+# ocr_regions.py, for image preprocessing. All 25 hb_* symbols _imagingft
+# imports are exported by Homebrew's build.
+#
+# The assertion below is the important half. Getting this wrong in the other
+# direction — removing Pillow's copy while Homebrew's sits under the
+# unversioned name — turns a PDF crash into an import failure, which is worse
+# and easier to ship by accident. So the build FAILS here rather than
+# producing a bundle nobody looks inside.
+_PIL_HARFBUZZ = [
+    (dest, src, kind)
+    for (dest, src, kind) in a.binaries
+    if "libharfbuzz" in os.path.basename(dest) and "PIL" in dest.split(os.sep)
+]
+for entry in _PIL_HARFBUZZ:
+    a.binaries.remove(entry)
+    print(f"[spec] #141: dropped Pillow's HarfBuzz: {entry[0]}")
+
+_HARFBUZZ_VERSIONED = [
+    dest
+    for (dest, _src, _kind) in a.binaries
+    if os.path.basename(dest) == "libharfbuzz.0.dylib"
+]
+if len(_HARFBUZZ_VERSIONED) != 1:
+    raise SystemExit(
+        f"[spec] #141: expected exactly one libharfbuzz.0.dylib in the bundle, "
+        f"found {len(_HARFBUZZ_VERSIONED)}: {_HARFBUZZ_VERSIONED}. Pango "
+        f"resolves @rpath/libharfbuzz.0.dylib; zero copies is an import "
+        f"failure and two is a silent collision that kills the first PDF "
+        f"render."
+    )
+if "PIL" in _HARFBUZZ_VERSIONED[0].split(os.sep):
+    raise SystemExit(
+        f"[spec] #141: the only libharfbuzz.0.dylib is Pillow's "
+        f"({_HARFBUZZ_VERSIONED[0]}); libharfbuzz-subset is Homebrew's and "
+        f"they are not interchangeable."
+    )
+print(f"[spec] #141: one HarfBuzz, at {_HARFBUZZ_VERSIONED[0]}")
+
+
 pyz = PYZ(a.pure)
 
 exe = EXE(

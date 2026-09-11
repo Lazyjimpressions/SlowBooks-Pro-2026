@@ -3,6 +3,7 @@
 # Feature 8: Infrastructure B (smtplib + email.mime)
 # ============================================================================
 
+import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -14,6 +15,8 @@ from sqlalchemy.orm import Session
 
 from app.models.email_log import EmailLog
 from app.models.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 _jinja_env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True)
@@ -167,58 +170,119 @@ def invoice_email_label(invoice, company_settings: dict) -> str:
     }.get(kind, kind)
 
 
-def render_invoice_email(
-    invoice, company_settings: dict, pay_url: str = None, note: str = None
-) -> str:
-    """Render the invoice email HTML body.
+def invoice_email_context(invoice, company_settings: dict, pay_url: str = None) -> dict:
+    """What a saved `invoice_email` template can reference.
 
-    `note` is the operator's own message from the Email Invoice dialog. It
-    is escaped and rendered as a paragraph above the standard text — the
-    box has existed in the interface for a long time and, until #140, was
-    not merely discarded but made the whole request fail validation.
+    Kept in one place so the preview and the send cannot drift — the reason
+    they could before is that there was no shared renderer at all.
     """
     from app.services.terminology import terms_for
 
-    doc_label = invoice_email_label(invoice, company_settings)
-    try:
-        template = _jinja_env.get_template("invoice_email.html")
-        return template.render(
-            inv=invoice,
-            company=company_settings,
-            pay_url=pay_url,
-            doc_label=doc_label,
-            note=(note or "").strip() or None,
-            terms=terms_for(company_settings),
-        )
-    except Exception:
-        # Fallback simple email. Customer name + company name are escaped
-        # via html.escape() since they can contain user-controlled text
-        # (e.g. a customer named `<script>...`). Invoice number is a
-        # generated string but escaped defensively. Float and date come
-        # from server-side formatting — no need to escape.
-        import html as _html
+    terms = terms_for(company_settings)
+    return {
+        "invoice": invoice,
+        "inv": invoice,  # the file template's name for it
+        "company": company_settings,
+        "customer_name": (
+            invoice.customer.name if invoice.customer else terms("Customer")
+        ),
+        "pay_url": pay_url,
+        "doc_label": invoice_email_label(invoice, company_settings),
+        "terms": terms,
+    }
 
-        customer_name = _html.escape(
-            invoice.customer.name
-            if invoice.customer
-            else terms_for(company_settings)("Customer")
-        )
-        company_name = _html.escape(company_settings.get("company_name", "Our Company"))
-        invoice_number = _html.escape(str(invoice.invoice_number))
-        # The operator's own message has to survive this path too, or it
-        # vanishes exactly when the template is missing.
-        opening = (
-            f"<p>{_html.escape(note.strip())}</p>"
-            if note and note.strip()
-            else (
-                f"<p>Please find attached {doc_label} #{invoice_number} "
-                f"for ${float(invoice.total):,.2f}.</p>"
-            )
-        )
-        return f"""<html><body>
+
+def _note_paragraph(note: str) -> str:
+    """The operator's own message, as an escaped paragraph.
+
+    It is prepended to whatever body we end up with and is deliberately NOT
+    a template variable. A `{{ note }}` a saved template can omit would drop
+    the operator's message silently — the same failure class #140 is about,
+    moved rather than fixed. @mdornich's call, and it is the right one:
+    placement control is additive later, a silently dropped message is not.
+    """
+    import html as _html
+
+    note = (note or "").strip()
+    return f"<p>{_html.escape(note)}</p>\n" if note else ""
+
+
+def render_invoice_email_parts(
+    invoice,
+    company_settings: dict,
+    pay_url: str = None,
+    note: str = None,
+    db=None,
+    subject: str = None,
+) -> tuple[str, str]:
+    """(subject, html_body) for an invoice email — the one renderer.
+
+    Order, and the whole point of #140: **the template saved under Settings
+    -> Email Templates is used if it exists.** Before this it was never
+    loaded by anything; `render_template_from_db` existed and had exactly
+    one caller, the donor acknowledgment. Editing `invoice_email` saved
+    correctly and changed nothing about the email a customer received.
+
+    The template is looked up by the fixed name `invoice_email`, never by
+    the document's face. `invoice_email_label()` answers "Sales Receipt" or
+    "Donation Receipt" for those kinds, so selecting on it would skip the
+    saved template for every sales receipt — which is ordinary businesses,
+    not only nonprofit installs (#140, third part).
+    """
+    ctx = invoice_email_context(invoice, company_settings, pay_url=pay_url)
+    default_subject = f"{ctx['doc_label']} #{invoice.invoice_number}"
+
+    body = None
+    tpl_subject = None
+    if db is not None:
+        try:
+            tpl_subject, tpl_body = render_template_from_db(db, "invoice_email", ctx)
+            if tpl_body:
+                body = tpl_body
+        except Exception:
+            # A saved template with a bad expression must not stop the mail
+            # going out; fall through to the built-in body.
+            logger.exception("saved invoice_email template failed to render")
+
+    if body is None:
+        try:
+            body = _jinja_env.get_template("invoice_email.html").render(**ctx)
+        except Exception:
+            body = _fallback_invoice_body(invoice, company_settings, ctx)
+
+    return (subject or tpl_subject or default_subject), _note_paragraph(note) + body
+
+
+def render_invoice_email(
+    invoice, company_settings: dict, pay_url: str = None, note: str = None, db=None
+) -> str:
+    """The HTML body alone. Kept because callers and tests use it."""
+    return render_invoice_email_parts(
+        invoice, company_settings, pay_url=pay_url, note=note, db=db
+    )[1]
+
+
+def _fallback_invoice_body(invoice, company_settings: dict, ctx: dict) -> str:
+    """Last resort when neither a saved nor a file template renders.
+
+    Escaped by hand because there is no Jinja autoescape on this path:
+    customer and company names are user-controlled text.
+    """
+    import html as _html
+
+    customer_name = _html.escape(ctx["customer_name"])
+    company_name = _html.escape(company_settings.get("company_name", "Our Company"))
+    invoice_number = _html.escape(str(invoice.invoice_number))
+    doc_label = ctx["doc_label"]
+    thanks = (
+        "Thank you for your support."
+        if ctx["terms"].is_nonprofit
+        else "Thank you for your business."
+    )
+    return f"""<html><body>
         <p>Dear {customer_name},</p>
-        {opening}
+        <p>Please find attached {doc_label} #{invoice_number} for ${float(invoice.total):,.2f}.</p>
         <p>Payment is due by {invoice.due_date}.</p>
-        <p>{'Thank you for your support.' if terms_for(company_settings).is_nonprofit else 'Thank you for your business.'}</p>
+        <p>{thanks}</p>
         <p>{company_name}</p>
         </body></html>"""

@@ -206,7 +206,80 @@ def _run_startup_security_checks():
             )
 
     # Only after the cheap checks pass do we open a DB connection.
+    _refuse_a_database_behind_head()
     _create_missing_tables()
+
+
+def _refuse_a_database_behind_head() -> None:
+    """Refuse to start against a database the migrations have not reached.
+
+    Issue #132, found by the macOS QA agent while gating 2.11.0.
+    `_create_missing_tables()` runs `create_all()` on EVERY start. Point that
+    at a database behind the migration head and it half-upgrades it: tables
+    the new revision ADDS are created, tables it ALTERS are untouched, and
+    `alembic_version` does not move. Alembic can then never run on that
+    database again — the upgrade tries to create tables that already exist.
+
+    The damage is silent at the moment it happens and loud much later, in a
+    different session, as a start failure with no obvious cause.
+
+    Neither shipped path reaches it: `desktop_launcher.py` runs
+    `alembic upgrade head` before serving, and `docker-entrypoint.sh` runs it
+    at line 21. A self-managed deployment that sets DATABASE_URL, runs
+    uvicorn directly and treats migrations as a separate step is on exactly
+    that path — and so is `--_serve`, which is how the agent met it.
+
+    A database with no `alembic_version` at all is a NEW one and is allowed
+    through: that is how a fresh company file and a fresh Docker volume both
+    start.
+    """
+    from sqlalchemy import inspect as _inspect, text as _text
+
+    try:
+        insp = _inspect(engine)
+        if not insp.has_table("alembic_version"):
+            return  # fresh database — create_all is how it gets built
+        with engine.connect() as conn:
+            row = conn.execute(_text("SELECT version_num FROM alembic_version")).first()
+        current = row[0] if row else None
+    except Exception:
+        # A guard that cannot read the thing it guards must not pass it
+        # silently. The agent's own version of this check had `except:
+        # return`, which let a file through BY FAILING TO READ IT while it
+        # was mid-copy. Say so and let the start proceed: refusing here
+        # would turn any transient DB blip into a failure to boot.
+        logging.getLogger(__name__).exception(
+            "could not read alembic_version; skipping the migration-head check"
+        )
+        return
+
+    if current is None:
+        return
+
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        root = Path(__file__).resolve().parent.parent
+        cfg = Config(str(root / "alembic.ini"))
+        cfg.set_main_option("script_location", str(root / "migrations"))
+        head = ScriptDirectory.from_config(cfg).get_current_head()
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "could not determine the migration head; skipping the check"
+        )
+        return
+
+    if head and current != head:
+        raise RuntimeError(
+            f"FATAL: this database is at migration '{current}' and this build "
+            f"expects '{head}'. Starting anyway would create the new tables "
+            f"without altering the existing ones and without moving the "
+            f"revision, after which migrations can never run on it again. "
+            f"Run `alembic upgrade head` against it first. "
+            f"(The desktop app and the Docker entrypoint both do this for you; "
+            f"a self-managed deployment must run it as its own step.)"
+        )
 
 
 def _create_missing_tables() -> None:
