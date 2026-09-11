@@ -417,7 +417,10 @@ const SettingsPage = {
                     </p>
                     <div id="api-token-reveal" style="display:none; margin-bottom:12px; padding:10px; border:1px solid var(--qb-gold); border-radius:4px; background:rgba(224,158,36,0.08); font-size:12px;">
                         <strong>Copy this token now — it will never be shown again:</strong>
-                        <div style="font-family:var(--font-mono); margin-top:6px; word-break:break-all;" id="api-token-secret"></div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                            <div style="font-family:var(--font-mono); word-break:break-all; flex:1;" id="api-token-secret"></div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="SettingsPage.copyApiTokenSecret()">Copy</button>
+                        </div>
                     </div>
                     <div id="api-token-list" style="margin-bottom:12px;"></div>
                     <div class="form-grid" style="align-items:end;">
@@ -517,6 +520,19 @@ const SettingsPage = {
             toast('Token created — copy it now, it will not be shown again');
             SettingsPage.loadApiTokens();
         } catch (err) { toast(err.message, 'error'); }
+    },
+
+    copyApiTokenSecret() {
+        const text = $('#api-token-secret').textContent;
+        if (!text) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+                () => toast('Token copied to clipboard'),
+                () => toast('Couldn\'t copy — select the token above and copy manually.', 'error'),
+            );
+        } else {
+            toast('Clipboard API unavailable — select the token above and copy manually.', 'error');
+        }
     },
 
     async updateApiToken(id, patch) {
