@@ -107,50 +107,56 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
-    excludes=["psycopg2", "psycopg2_binary"],
+    excludes=[
+        "psycopg2",
+        "psycopg2_binary",
+        # #141 — see the HarfBuzz block below. These bring Pillow's own
+        # HarfBuzz, which collides with the one Pango needs.
+        "PIL._imagingft",
+        "PIL.ImageFont",
+    ],
     noarchive=False,
 )
 # ---------------------------------------------------------------------------
 # One HarfBuzz, and it must be Homebrew's (issue #141, reported by mdornich)
 # ---------------------------------------------------------------------------
-# PyInstaller collects TWO HarfBuzz builds into the bundle:
+# When Pillow's `_imagingft` is collected, PyInstaller brings Pillow's own
+# HarfBuzz with it and the two builds collide under one install name:
 #
-#   Contents/Frameworks/PIL/.dylibs/libharfbuzz.0.dylib   Pillow's,   ~1.81 MB
-#   Contents/Frameworks/libharfbuzz.dylib                 Homebrew's, ~1.32 MB
-#   Contents/Frameworks/libharfbuzz-subset.0.dylib        Homebrew's, ~1.36 MB
+#   PIL/.dylibs/libharfbuzz.0.dylib   Pillow's,   ~1.81 MB  <- owns the VERSIONED name
+#   libharfbuzz.dylib                 Homebrew's, ~1.24 MB  <- unversioned ONLY
+#   libharfbuzz-subset.0.dylib        Homebrew's, ~1.43 MB
 #
-# Both answer to the install name @rpath/libharfbuzz.0.dylib, so whichever
-# loads first wins for the whole process. The `binaries` list above seeds
-# Homebrew's under the VERSIONED name, but PyInstaller's PIL hook wins the
-# filename collision and turns Contents/Frameworks/libharfbuzz.0.dylib into a
-# symlink into PIL/. Homebrew's real library then sits in the bundle under the
-# unversioned name where nothing resolves to it.
+# The `binaries` list above seeds Homebrew's under the versioned name, but
+# PIL's hook wins the filename and Homebrew's real library lands unversioned
+# where nothing resolves to it. Pango asks for @rpath/libharfbuzz.0.dylib and
+# gets Pillow's, while libharfbuzz-subset is Homebrew's — and those symbols
+# exist only in the Homebrew build. The first PDF render dies in native code.
 #
-# Pango therefore gets Pillow's HarfBuzz while libharfbuzz-subset is
-# Homebrew's — and `libharfbuzz-subset` only exists in the Homebrew build. The
-# first PDF render dies in native code.
+# EXCLUDE THE MODULE, DO NOT DROP THE LIBRARY. That distinction is @macbase1's
+# and it was measured, not argued. Removing Pillow's dylib from `a.binaries`
+# after Analysis is too late, and fails two ways:
 #
-# Dropping Pillow's copy is safe, and that was checked rather than assumed:
-# the pinned pillow wheel ships neither libraqm nor libfribidi, so complex
-# shaping is off and `PIL.features.check('harfbuzz')` is False; and nothing in
-# app/ draws text with Pillow at all — it appears only in ocr_service.py and
-# ocr_regions.py, for image preprocessing. All 25 hb_* symbols _imagingft
-# imports are exported by Homebrew's build.
+#   * on its own it leaves ZERO versioned copies, because Homebrew's is
+#     already sitting under the unversioned name — an affected builder then
+#     cannot build at all;
+#   * re-seeding Homebrew's versioned name afterwards BUILDS, and produces a
+#     DANGLING SYMLINK into PIL/, because PyInstaller creates the cross-link
+#     before the spec removes the file under it. That bundle signs, notarizes,
+#     and dies at the first PDF — the original symptom, reached by the repair.
 #
-# The assertion below is the important half. Getting this wrong in the other
-# direction — removing Pillow's copy while Homebrew's sits under the
-# unversioned name — turns a PDF crash into an import failure, which is worse
-# and easier to ship by accident. So the build FAILS here rather than
-# producing a bundle nobody looks inside.
-_PIL_HARFBUZZ = [
-    (dest, src, kind)
-    for (dest, src, kind) in a.binaries
-    if "libharfbuzz" in os.path.basename(dest) and "PIL" in dest.split(os.sep)
-]
-for entry in _PIL_HARFBUZZ:
-    a.binaries.remove(entry)
-    print(f"[spec] #141: dropped Pillow's HarfBuzz: {entry[0]}")
-
+# Excluding `PIL._imagingft` / `PIL.ImageFont` is early enough: the library is
+# never collected, so Homebrew's keeps the versioned name it was seeded with.
+#
+# Safe because nothing in app/ draws text with Pillow — it appears only in
+# ocr_service.py and ocr_regions.py, for image preprocessing, and neither
+# imports ImageFont or ImageDraw. tests/test_macos_harfbuzz_collision.py fails
+# if that ever stops being true.
+#
+# (An earlier version of this comment claimed the pinned wheel ships no raqm
+# or fribidi, so shaping is off. @macbase1 measured pillow 12.3.0 from that
+# same pin reporting `harfbuzz: True, raqm: True`. The conclusion stands but
+# it rests only on the argument above, not on that one.)
 _HARFBUZZ_VERSIONED = [
     dest
     for (dest, _src, _kind) in a.binaries
@@ -162,7 +168,8 @@ if len(_HARFBUZZ_VERSIONED) != 1:
         f"found {len(_HARFBUZZ_VERSIONED)}: {_HARFBUZZ_VERSIONED}. Pango "
         f"resolves @rpath/libharfbuzz.0.dylib; zero copies is an import "
         f"failure and two is a silent collision that kills the first PDF "
-        f"render."
+        f"render. If Pillow's copy is back, something is pulling in "
+        f"PIL._imagingft past the excludes below."
     )
 if "PIL" in _HARFBUZZ_VERSIONED[0].split(os.sep):
     raise SystemExit(

@@ -115,8 +115,17 @@ image could reach it; a self-managed deployment could.
 **One HarfBuzz in the macOS bundle** (#141, @mdornich). Two copies of the
 same text-shaping library were being collected under one name, so whichever
 loaded first won for the whole process — and the pieces did not match, which
-killed the first PDF render on a locally built app. The build now fails
-loudly if it ever contains anything other than exactly one.
+killed the first PDF render on a locally built app. The module that brings
+the second copy is excluded, and the build now fails loudly if a bundle ever
+contains anything other than exactly one.
+
+The first attempt at this removed the duplicate library after it had been
+collected, which was wrong in two ways that only appear on a machine that has
+the problem. On its own it left no usable copy at all, so an affected builder
+could not build. Repairing that produced a bundle that looked complete,
+signed and notarized, and still died at the first PDF. Both were found by
+deliberately reproducing the fault on a machine that did not have it, rather
+than by a build passing.
 
 ### v2.11.1 — Wave imports work, and you can copy an API token
 
