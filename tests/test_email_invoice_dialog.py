@@ -69,6 +69,34 @@ def test_the_payload_the_dialog_actually_sends_is_accepted(
     assert r.status_code in (200, 500, 502), r.text
 
 
+def test_an_unknown_field_is_still_refused():
+    """The control, and it is @macbase1's — their gate harness had it and my
+    test did not.
+
+    "The dialog's payload is accepted" is equally true of a fix that named
+    `message` and of one that simply deleted the model's strictness. Only
+    this tells them apart, and the second would be a far wider change than
+    #140 asked for: `_EmailInvoiceRequest` is a StrictModel on purpose, so
+    that a typo in the page is a loud 422 rather than a field silently
+    dropped on the floor.
+
+    It lives here as well as in the harness because CI runs this suite on
+    every push and does not run the harness.
+    """
+    from app.routes.invoices.documents import _EmailInvoiceRequest
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError) as e:
+        _EmailInvoiceRequest(
+            recipient="a@b.com", subject="s", message="m", nonsense="x"
+        )
+    assert "extra_forbidden" in str(e.value)
+
+    # And the four it does take still validate together.
+    ok = _EmailInvoiceRequest(recipient="a@b.com", subject="s", message="m")
+    assert ok.message == "m"
+
+
 def test_the_dialog_and_the_route_agree_on_their_fields():
     """The tripwire. These two drifted apart and nothing noticed, because
     they are in different languages in different files."""
