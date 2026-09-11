@@ -176,13 +176,19 @@ def invoice_email_context(invoice, company_settings: dict, pay_url: str = None) 
     Kept in one place so the preview and the send cannot drift — the reason
     they could before is that there was no shared renderer at all.
     """
+    from app.services.settings_service import redact_secrets
     from app.services.terminology import terms_for
 
     terms = terms_for(company_settings)
     return {
         "invoice": invoice,
         "inv": invoice,  # the file template's name for it
-        "company": company_settings,
+        # GHSA-c3v4-f43f-4wqm. The `invoice_email` template is operator-
+        # editable and, since #140, actually rendered — so `{{ company }}`
+        # would dump every decrypted credential into an email addressed to
+        # whoever the sender chooses. Redacted at the point the context is
+        # built, so no caller can forget.
+        "company": redact_secrets(company_settings),
         "customer_name": (
             invoice.customer.name if invoice.customer else terms("Customer")
         ),

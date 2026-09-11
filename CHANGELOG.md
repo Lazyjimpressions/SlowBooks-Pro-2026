@@ -9,8 +9,33 @@ on what the software does, not on what sprint shipped what.
 
 ### v2.12.0 — Your chart, your templates, your clipboard
 
-Five reader-reported defects, closed together. Two of them had been breaking
-something on every install.
+Five reader-reported defects and one privately reported security issue,
+closed together. Two of them had been breaking something on every install.
+
+**Security: an editable email template could read stored credentials**
+(GHSA-c3v4-f43f-4wqm, reported privately). The settings dictionary handed to
+an email template was the decrypted one, so a template containing
+`{{ company.smtp_password }}` rendered the live password, and `{{ company }}`
+dumped every credential at once — into an email addressed to whoever sent it.
+The settings screen has always shown these as asterisks to every role
+including the administrator, so the intent was never in doubt; the template
+simply walked around it.
+
+It is a privilege escalation: a bookkeeper cannot read or write those values
+through the settings API, but could edit a template and send.
+
+Every credential is now replaced before a template ever sees it, at the point
+the context is built rather than at each place that sends, so a renderer
+added later inherits the protection instead of repeating the mistake. The two
+lists of which settings are secret — one used for encryption, one for the
+settings screen — were identical and are now literally the same list, because
+a credential added to one and not the other would be encrypted at rest and
+printed in plaintext by an email.
+
+**This release found the wider half of it.** The acknowledgment letter has
+been affected since v2.9.0 on nonprofit installs. Making the invoice template
+render, below, would have taken that to every install sending an invoice.
+Caught before release; both paths are closed and both have tests.
 
 **A new company arrives with 57 accounts, and not one of them could be
 removed or hidden** (#139, @tresero, coming from hledger with a chart of his

@@ -2,6 +2,7 @@
   "2.12.0": {
     "title": "Your chart, your templates, your clipboard",
     "items": [
+      "Security: an email template could be edited to read stored passwords and API keys — the SMTP password, payment-provider keys, accounting-integration tokens — and mail them out. The settings screen has always hidden these, and the template walked around it. Credentials are now removed before any template can see them. Reported privately",
       "You can remove accounts you do not use. A new company arrives with 57 accounts and, until now, not one of them could be deleted or hidden — so anyone whose business does not look like ours was stuck with a chart they did not choose. Deactivate, Reactivate and Delete are on the Chart of Accounts page now, with a button to show the inactive ones",
       "Fifteen accounts still cannot be removed, because the software finds them by number when it posts. You can rename them to whatever you call them",
       "The email template you save is the email that gets sent. Editing it under Settings saved correctly and changed nothing at all — the invoice email was always built from a fixed layout. There is a preview in the Email Invoice dialog now, rendered by the same code that sends, so you can see what a customer will get before they get it",
