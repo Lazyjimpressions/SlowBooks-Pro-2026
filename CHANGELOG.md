@@ -112,6 +112,16 @@ again. The damage was silent when it happened and surfaced much later as a
 start failure with no obvious cause. Neither the desktop app nor the Docker
 image could reach it; a self-managed deployment could.
 
+**And a file it has already happened to can now be repaired.** Refusing to
+start protects files going forward and does nothing for one already damaged,
+where the ordinary upgrade command fails on a table that already exists —
+so the refusal was printing advice that could not work for exactly the
+people who hit it. `scripts/repair-schema.py` drops the empty tables left
+behind and then upgrades. It will not touch a table with anything in it: the
+mechanism that causes this only ever creates, so what it left behind is
+empty, and a table with rows was made by something else. The startup message
+now tells the two situations apart and names the right remedy for each.
+
 **One HarfBuzz in the macOS bundle** (#141, @mdornich). Two copies of the
 same text-shaping library were being collected under one name, so whichever
 loaded first won for the whole process — and the pieces did not match, which

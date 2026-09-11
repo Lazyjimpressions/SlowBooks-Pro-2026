@@ -271,14 +271,36 @@ def _refuse_a_database_behind_head() -> None:
         return
 
     if head and current != head:
+        # Two different situations, and only one of them is fixed by the
+        # obvious command. An ORDINARY old file upgrades cleanly. A file a
+        # server has already half-upgraded does NOT: the tables the pending
+        # revisions create are already there, so the upgrade dies on
+        # "already exists". Printing `alembic upgrade head` at someone in
+        # that state is advice that fails — the same shape as #139's delete
+        # error saying "deactivate it instead" when nothing could deactivate.
+        from app.services.schema_repair import looks_half_upgraded
+
+        if looks_half_upgraded(engine):
+            remedy = (
+                "A server has already been started against this database "
+                "while it was behind, so `alembic upgrade head` will fail on "
+                "a table that already exists. Repair it with:\n"
+                "    python3 scripts/repair-schema.py --database-url <url>\n"
+                "which drops only the empty tables left behind and then "
+                "upgrades. Take a copy first."
+            )
+        else:
+            remedy = (
+                "Run `alembic upgrade head` against it first. (The desktop "
+                "app and the Docker entrypoint both do this for you; a "
+                "self-managed deployment must run it as its own step.)"
+            )
         raise RuntimeError(
             f"FATAL: this database is at migration '{current}' and this build "
             f"expects '{head}'. Starting anyway would create the new tables "
             f"without altering the existing ones and without moving the "
-            f"revision, after which migrations can never run on it again. "
-            f"Run `alembic upgrade head` against it first. "
-            f"(The desktop app and the Docker entrypoint both do this for you; "
-            f"a self-managed deployment must run it as its own step.)"
+            f"revision, after which migrations could never run on it again. "
+            f"{remedy}"
         )
 
 

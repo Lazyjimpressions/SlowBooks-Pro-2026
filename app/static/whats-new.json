@@ -8,7 +8,7 @@
       "The email template you save is the email that gets sent. Editing it under Settings saved correctly and changed nothing at all — the invoice email was always built from a fixed layout. There is a preview in the Email Invoice dialog now, rendered by the same code that sends, so you can see what a customer will get before they get it",
       "Emailing an invoice works again. The Send button failed on every install, because the dialog sent a Message field the server refused. The message you type appears at the top of the email",
       "Copy buttons explain themselves when they cannot copy, and leave the text selected so one keystroke finishes the job. Copying silently did nothing for anyone opening SlowBooks from another machine on the network",
-      "The app refuses to start against a company file older than itself, instead of starting and quietly making it impossible to upgrade"
+      "The app refuses to start against a company file older than itself, instead of starting and quietly making it impossible to upgrade. A file that has already been damaged this way can be repaired with scripts/repair-schema.py, which will not touch a table with anything in it"
     ]
   },
   "2.11.1": {
