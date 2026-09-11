@@ -319,14 +319,19 @@ def build_code_map(accounts: list[dict]) -> dict[str, str]:
 
 # Filename fragments shared by every source's bundle classifier; dialects
 # can extend (e.g. Wave/GnuCash "transactions" exports are the GL).
+#
+# GL fragments are checked before "account"/"acct": Wave's own export for
+# this bundle's GL file is literally named "Account Transactions.csv", and
+# with "account" checked first that unambiguously-GL file matched "coa"
+# instead, before "transaction" ever got a look.
 BASE_FILE_KINDS = (
     ("chart", "coa"),
-    ("account", "coa"),
-    ("acct", "coa"),  # real users type "acct_tree"
     ("general", "gl"),
     ("ledger", "gl"),
     ("journal", "gl"),
     ("transaction", "gl"),
+    ("account", "coa"),
+    ("acct", "coa"),  # real users type "acct_tree"
     ("trial", "tb"),
 )
 
