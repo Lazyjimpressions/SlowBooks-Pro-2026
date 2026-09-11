@@ -167,8 +167,16 @@ def invoice_email_label(invoice, company_settings: dict) -> str:
     }.get(kind, kind)
 
 
-def render_invoice_email(invoice, company_settings: dict, pay_url: str = None) -> str:
-    """Render the invoice email HTML body."""
+def render_invoice_email(
+    invoice, company_settings: dict, pay_url: str = None, note: str = None
+) -> str:
+    """Render the invoice email HTML body.
+
+    `note` is the operator's own message from the Email Invoice dialog. It
+    is escaped and rendered as a paragraph above the standard text — the
+    box has existed in the interface for a long time and, until #140, was
+    not merely discarded but made the whole request fail validation.
+    """
     from app.services.terminology import terms_for
 
     doc_label = invoice_email_label(invoice, company_settings)
@@ -179,6 +187,7 @@ def render_invoice_email(invoice, company_settings: dict, pay_url: str = None) -
             company=company_settings,
             pay_url=pay_url,
             doc_label=doc_label,
+            note=(note or "").strip() or None,
             terms=terms_for(company_settings),
         )
     except Exception:
@@ -196,9 +205,19 @@ def render_invoice_email(invoice, company_settings: dict, pay_url: str = None) -
         )
         company_name = _html.escape(company_settings.get("company_name", "Our Company"))
         invoice_number = _html.escape(str(invoice.invoice_number))
+        # The operator's own message has to survive this path too, or it
+        # vanishes exactly when the template is missing.
+        opening = (
+            f"<p>{_html.escape(note.strip())}</p>"
+            if note and note.strip()
+            else (
+                f"<p>Please find attached {doc_label} #{invoice_number} "
+                f"for ${float(invoice.total):,.2f}.</p>"
+            )
+        )
         return f"""<html><body>
         <p>Dear {customer_name},</p>
-        <p>Please find attached {doc_label} #{invoice_number} for ${float(invoice.total):,.2f}.</p>
+        {opening}
         <p>Payment is due by {invoice.due_date}.</p>
         <p>{'Thank you for your support.' if terms_for(company_settings).is_nonprofit else 'Thank you for your business.'}</p>
         <p>{company_name}</p>

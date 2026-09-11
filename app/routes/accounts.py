@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -143,11 +144,61 @@ def update_account(account_id: int, data: AccountUpdate, db: Session = Depends(g
     return account
 
 
+def _referencing_rows(db: Session, account_id: int) -> list[tuple[str, int]]:
+    """[(table, count)] for every row in the database pointing at this
+    account, derived from the schema rather than a hand-kept list.
+
+    Thirty-five columns across seventeen models reference `accounts.id`, and
+    that number grows with every feature — vendor credits added one this
+    week. A list maintained by hand would be wrong within a release, and the
+    symptom of it being wrong is a foreign-key violation surfacing as a 500.
+    Walking the metadata cannot fall behind the schema.
+    """
+    from app.database import Base
+
+    found: list[tuple[str, int]] = []
+    for table in Base.metadata.sorted_tables:
+        for fk in table.foreign_keys:
+            if fk.column.table.name != "accounts":
+                continue
+            n = (
+                db.query(func.count())
+                .select_from(table)
+                .filter(fk.parent == account_id)
+                .scalar()
+            ) or 0
+            if n:
+                found.append((table.name.replace("_", " "), n))
+    return found
+
+
 @router.delete("/{account_id}")
 def delete_account(account_id: int, db: Session = Depends(get_db)):
     account = get_or_404(db, Account, account_id)
-    if account.is_system:
-        raise HTTPException(status_code=400, detail="Cannot delete system account")
+
+    # Gated on the control-account registry, NOT on is_system.
+    #
+    # Every one of the 57 accounts a new company is seeded with carries
+    # is_system, so gating on it refused all of them — which left an operator
+    # with someone else's chart of accounts and no way to shrink it: delete
+    # refused, and there was no deactivate control on the page either. That
+    # is the same wrong flag 2.10.2 found hiding the Edit button, in a second
+    # place (issue #139, reported by tresero coming from hledger).
+    #
+    # Fifteen numbers genuinely cannot go: the posting code resolves them
+    # literally, and a document that cannot find one is #119. Those can be
+    # renamed, not removed. The other forty-two are ordinary accounts.
+    if control_accounts.is_control_number(account.account_number):
+        name, purpose = control_accounts.describe(account.account_number)
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{account.account_number} {name} is a control account — the "
+                f"software posts to it by number for {purpose}, so it cannot "
+                f"be deleted. You can rename it, or deactivate it to hide it "
+                f"from new entries."
+            ),
+        )
 
     # An account carrying ledger history must not be deleted — the postings
     # would lose their anchor. Refusing is correct; the bug was that the
@@ -165,6 +216,24 @@ def delete_account(account_id: int, db: Session = Depends(get_db)):
                 f"'{account.name}' has {posted} posted transaction line(s) and "
                 f"cannot be deleted. Deactivate it instead (set is_active=false) "
                 f"to hide it from new entries while preserving history."
+            ),
+        )
+
+    # Anything else still pointing at it — an item's income account, a
+    # vendor's default expense account, a bank feed, a budget line. Named,
+    # because "referenced by other records" tells the operator nothing about
+    # where to go and undo it.
+    others = [
+        (t, n) for t, n in _referencing_rows(db, account_id) if t != "transaction lines"
+    ]
+    if others:
+        where = ", ".join(f"{n} in {t}" for t, n in others)
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"'{account.name}' is still in use: {where}. Point those at "
+                f"another account first, or deactivate this one to hide it "
+                f"from new entries."
             ),
         )
 

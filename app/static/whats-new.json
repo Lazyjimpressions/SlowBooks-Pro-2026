@@ -1,4 +1,13 @@
 {
+  "2.11.2": {
+    "title": "Your chart of accounts is yours",
+    "items": [
+      "You can remove accounts you do not use. A new company arrives with 57 accounts and, until now, not one of them could be deleted or hidden — so anyone whose business does not look like ours was stuck with a chart they did not choose",
+      "Deactivate and Reactivate are on the Chart of Accounts page, with a button to show the inactive ones. Deactivating hides an account from new entries and keeps its history",
+      "Fifteen accounts still cannot be removed, because the software finds them by number when it posts. You can rename them to whatever you call them",
+      "Emailing an invoice works again. The Send button failed on every install — the dialog sent a Message field the server refused, so the request never reached the sending code. The message you type is now the message that goes out"
+    ]
+  },
   "2.11.1": {
     "title": "Wave imports work, and you can copy an API token",
     "items": [

@@ -154,12 +154,25 @@ const App = {
         }
     },
 
+    // Inactive accounts are hidden by default — that is the point of
+    // deactivating one. But they must be reachable, or deactivating is a
+    // one-way trip with no way back to the row (issue #139).
+    _showInactiveAccounts: false,
+
+    toggleInactiveAccounts() {
+        App._showInactiveAccounts = !App._showInactiveAccounts;
+        App.navigate('#/accounts');
+    },
+
     async renderAccounts() {
         const accounts = await API.get('/accounts');
         const grouped = {};
+        let inactiveCount = 0;
         for (const a of accounts) {
             if (!grouped[a.account_type]) grouped[a.account_type] = [];
-            if (a.is_active !== false) grouped[a.account_type].push(a);
+            const inactive = a.is_active === false;
+            if (inactive) inactiveCount++;
+            if (!inactive || App._showInactiveAccounts) grouped[a.account_type].push(a);
         }
 
         const typeOrder = ['asset', 'liability', 'equity', 'income', 'cogs', 'expense'];
@@ -169,10 +182,13 @@ const App = {
         let html = `
             <div class="page-header">
                 <h2>Chart of Accounts</h2>
-                <button class="btn btn-primary" onclick="App.showAccountForm()">New Account</button>
+                <div>
+                    ${inactiveCount ? `<button class="btn btn-sm btn-secondary" onclick="App.toggleInactiveAccounts()">${App._showInactiveAccounts ? 'Hide' : 'Show'} ${inactiveCount} inactive</button> ` : ''}
+                    <button class="btn btn-primary" onclick="App.showAccountForm()">New Account</button>
+                </div>
             </div>
             <div class="table-container"><table>
-                <thead><tr><th scope="col" style="width:80px;">Number</th><th scope="col">Name</th><th scope="col" style="width:100px;">Type</th><th scope="col" class="amount" style="width:100px;">Balance</th><th scope="col" style="width:60px;">Actions</th></tr></thead>
+                <thead><tr><th scope="col" style="width:80px;">Number</th><th scope="col">Name</th><th scope="col" style="width:100px;">Type</th><th scope="col" class="amount" style="width:100px;">Balance</th><th scope="col" style="width:190px;">Actions</th></tr></thead>
                 <tbody>`;
 
         for (const type of typeOrder) {
@@ -180,13 +196,18 @@ const App = {
             if (accts.length === 0) continue;
             html += `<tr style="background:linear-gradient(180deg, #e8ecf2 0%, #dde2ea 100%);"><td colspan="5" style="font-weight:700; color:var(--qb-navy); font-size:11px; padding:4px 10px;">${typeNames[type]}</td></tr>`;
             for (const a of accts) {
-                html += `<tr>
+                const inactive = a.is_active === false;
+                html += `<tr${inactive ? ' style="opacity:.55;"' : ''}>
                     <td style="font-family:var(--font-mono);">${escapeHtml(a.account_number || '')}</td>
-                    <td><strong>${escapeHtml(a.name)}</strong>${a.is_control ? ` <span class="badge-control" title="${escapeHtml(a.control_purpose || 'the software finds this account by its number')}">control</span>` : ''}</td>
+                    <td><strong>${escapeHtml(a.name)}</strong>${a.is_control ? ` <span class="badge-control" title="${escapeHtml(a.control_purpose || 'the software finds this account by its number')}">control</span>` : ''}${inactive ? ' <span class="badge badge-draft">inactive</span>' : ''}</td>
                     <td>${a.account_type}</td>
                     <td class="amount">${formatCurrency(a.balance)}</td>
                     <td class="actions">
                         <button class="btn btn-sm btn-secondary" onclick="App.showAccountForm(${a.id})">Edit</button>
+                        ${inactive
+                            ? `<button class="btn btn-sm btn-secondary" onclick="App.setAccountActive(${a.id}, true)">Reactivate</button>`
+                            : `<button class="btn btn-sm btn-secondary" onclick="App.setAccountActive(${a.id}, false)">Deactivate</button>`}
+                        ${a.is_control ? '' : `<button class="btn btn-sm btn-secondary" onclick="App.deleteAccount(${a.id}, ${JSON.stringify(a.name)})">Delete</button>`}
                     </td>
                 </tr>`;
             }
@@ -232,6 +253,26 @@ const App = {
                     <button type="submit" class="btn btn-primary">${id ? 'Update' : 'Create'} Account</button>
                 </div>
             </form>`);
+    },
+
+    async setAccountActive(id, active) {
+        try {
+            await API.put(`/accounts/${id}`, { is_active: active });
+            toast(active ? 'Account reactivated' : 'Account deactivated — it is hidden from new entries');
+            App.navigate('#/accounts');
+        } catch (err) { toast(err.message, 'error'); }
+    },
+
+    async deleteAccount(id, name) {
+        // Deleting is for an account that was never used. Anything with
+        // history, or anything the books resolve by number, is refused by
+        // the server with a reason — deactivating is the answer there.
+        if (!confirm(`Delete "${name}"? This only works if nothing has ever posted to it. If it has history, deactivate it instead.`)) return;
+        try {
+            await API.del(`/accounts/${id}`);
+            toast('Account deleted');
+            App.navigate('#/accounts');
+        } catch (err) { toast(err.message, 'error'); }
     },
 
     async saveAccount(e, id) {

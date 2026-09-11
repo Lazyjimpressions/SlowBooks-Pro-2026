@@ -7,6 +7,63 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.11.2 — Your chart of accounts is yours
+
+**A new company arrives with 57 accounts, and not one of them could be
+removed or hidden.** Reported by @tresero (issue #139), coming from hledger
+with a chart of his own and finding no way to use it.
+
+Delete refused every seeded account, because all 57 are flagged as created
+by the software and the rule rejected anything carrying that flag —
+permanently, even on a company with no transactions in it. Deactivate was
+not on the page at all: the account form offered number, name, type and
+description, and nothing else. Our own delete error told people to
+"deactivate it instead", which the interface could not do.
+
+So the only thing an operator could do to our chart was rename it.
+
+**That is the same wrong flag 2.10.2 found hiding the Edit button, in a
+second place.** The gate is the control-account registry now, not the
+system flag: fifteen numbers the posting code resolves literally, where a
+document that cannot find one is issue #119. Those can be renamed and
+deactivated but never removed. The other forty-two are ordinary accounts and
+go when you say so.
+
+**Deactivate, Reactivate and Delete are on the Chart of Accounts page**, with
+a button to show inactive accounts — because hiding something with no way
+back to it is a trap, not a feature. Delete is not offered on a control
+account at all, rather than offered and then refused.
+
+**Deleting names what is in the way.** An account still referenced by an
+item, a vendor default, a bank feed or a budget is refused with the count
+and the table, instead of "referenced by other records", which told the
+operator nothing about where to go and undo it. That check walks the schema
+rather than a hand-kept list: thirty-five columns across seventeen models
+reference an account today and vendor credits added one this week, so a list
+maintained by hand would be wrong within a release — and the symptom of it
+being wrong is a foreign-key violation surfacing as a server error.
+
+### Emailing an invoice failed on every install
+
+Reported by @mdornich (issue #140). The Email Invoice dialog posts a
+`message` field. The route accepts `recipient` and `subject` and rejects
+anything else. **So every send from the interface failed validation before
+it reached the sending code** — the Message box did not merely get ignored,
+it broke the button it sat on.
+
+Nothing caught it because every test called that endpoint with a payload the
+endpoint accepts, rather than the payload the page actually sends. That is
+the shape of 2.10.3's unreachable attachment route: a test of the handler is
+not a test of what the interface does. There is now a check that reads the
+fields out of the page and out of the request model and fails if they drift
+apart again.
+
+The message you type is the message that goes out, escaped on both the
+templated and fallback paths, since it is operator text landing in an HTML
+email. The rest of @mdornich's report — the saved template being ignored,
+and template selection keyed off a document label — is his branch to open,
+and it is the better fix.
+
 ### v2.11.1 — Wave imports work, and you can copy an API token
 
 Both fixes in this release came from @rchanks, and both were found the way

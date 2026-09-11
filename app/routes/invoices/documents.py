@@ -18,6 +18,11 @@ from app.routes.invoices._router import router
 class _EmailInvoiceRequest(StrictModel):
     recipient: str
     subject: _Optional[str] = None
+    # The Email Invoice dialog has always posted `message`, and this model
+    # is a StrictModel — so every send from the interface was rejected 422
+    # before it reached any of the code below. The box was not merely
+    # ignored; it broke the button it sat on (issue #140, mdornich).
+    message: _Optional[str] = None
 
 
 @router.get("/{invoice_id}/pdf")
@@ -105,7 +110,9 @@ def email_invoice(
             base_url = str(request.base_url).rstrip("/")
             pay_url = f"{base_url}/pay/{inv.payment_token}"
 
-        html_body = render_invoice_email(inv, company, pay_url=pay_url)
+        html_body = render_invoice_email(
+            inv, company, pay_url=pay_url, note=data.message
+        )
         # send_email() writes its own EmailLog row on every path (sent,
         # failed, and SMTP-not-configured), so the route must not log again
         # or every send produces two rows.
