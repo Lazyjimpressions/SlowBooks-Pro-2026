@@ -124,16 +124,36 @@ def parse_coa(csv_text: str) -> tuple[list[dict], list[str]]:
 def parse_gl(csv_text: str) -> tuple[list[dict], list[str]]:
     rows, errors = [], []
     for i, row in enumerate(sniff_reader(csv_text), start=2):
-        account = field(row, "account name", "account")
+        # Wave's "Account Transactions" report — a plain export any Wave
+        # user can pull with no plan restrictions — uses "ACCOUNT NUMBER"
+        # as the header over what is actually the account name for every
+        # data row (the numeric-code use of that column is vanishingly
+        # rare in practice), and suffixes its money columns with
+        # "(In Business Currency)". Neither matched below, so every row
+        # silently parsed as account="" / debit=credit=0: the dry-run
+        # "balanced" only because everything was zero, and the GL-account
+        # check failed once, deduped, on the empty name.
+        account = field(row, "account name", "account", "account number")
         date_raw = field(row, "transaction date", "date")
         if not account and not date_raw:
             continue
         try:
-            debit = parse_amount(field(row, "debit amount", "debit"))
-            credit = parse_amount(field(row, "credit amount", "credit"))
+            debit = parse_amount(
+                field(row, "debit amount", "debit", "debit (in business currency)")
+            )
+            credit = parse_amount(
+                field(row, "credit amount", "credit", "credit (in business currency)")
+            )
             if debit == 0 and credit == 0:
                 # Single signed Amount column: positive = debit
-                signed = parse_amount(field(row, "amount (one column)", "amount"))
+                signed = parse_amount(
+                    field(
+                        row,
+                        "amount (one column)",
+                        "amount",
+                        "amount (in business currency)",
+                    )
+                )
                 if signed > 0:
                     debit = signed
                 elif signed < 0:
