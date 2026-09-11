@@ -43,9 +43,17 @@ def invoice(client):
 def test_the_payload_the_dialog_actually_sends_is_accepted(
     client, seed_accounts, invoice
 ):
-    """Not 422. SMTP is unconfigured in tests, so the honest outcome is a
-    502 from the send itself — which means validation passed and the request
-    reached the sending code."""
+    """The claim is only this: the request clears validation.
+
+    What happens *after* validation is host-dependent and is not what this
+    test is about — SMTP is unconfigured everywhere, so a machine with the
+    PDF stack answers 502 from the send, and one without it answers 500
+    because the attachment cannot be rendered. Asserting 502 made this pass
+    on Linux and fail on Windows CI, which is precisely the defect class
+    that job exists to catch (@ContractorKeith found the same shape in
+    2.10.2: a test that only passed where something was absent). Caught on
+    the 2.11.2 gate, by the job, before anyone ran it.
+    """
     r = client.post(
         f"/api/invoices/{invoice['id']}/email",
         json={
@@ -54,8 +62,11 @@ def test_the_payload_the_dialog_actually_sends_is_accepted(
             "message": f"Please find attached Invoice #{invoice['invoice_number']}.",
         },
     )
-    assert r.status_code != 422, r.text
-    assert r.status_code == 502, r.text
+    assert r.status_code != 422, (
+        "the dialog's own payload is rejected before reaching the send: " f"{r.text}"
+    )
+    # It got past the request model and into the handler.
+    assert r.status_code in (200, 500, 502), r.text
 
 
 def test_the_dialog_and_the_route_agree_on_their_fields():
