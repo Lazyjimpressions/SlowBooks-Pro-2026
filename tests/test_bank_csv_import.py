@@ -2,6 +2,7 @@
 content-derived import_id dedup, and bank-rule parity with OFX import."""
 
 from decimal import Decimal
+from pathlib import Path
 
 from app.models.accounts import Account, AccountType
 from app.models.bank_rules import BankRule
@@ -43,19 +44,9 @@ PAYPAL_NEW_CSV = (
     "grace@example.com,Grace Hopper,,,0.00,0.00,INV-9,\n"
 )
 
-BOFA_DETAIL_CSV = (
-    "Description,,Summary Amt.\n"
-    'Beginning balance as of 01/01/2026,,"1,000.00"\n'
-    'Total credits,,"1,239.90"\n'
-    'Total debits,,"(250.00)"\n'
-    'Ending balance as of 01/31/2026,,"1,989.90"\n'
-    "\n"
-    "Date,Description,Amount,Running Bal.\n"
-    '01/01/2026,Beginning balance as of 01/01/2026,,"1,000.00"\n'
-    '01/20/2026,Interest Earned,4.90,"1,004.90"\n'
-    '01/22/2026,Online Banking transfer to CHK 1234,(250.00),"754.90"\n'
-    '01/25/2026,BKOFAMERICA MOBILE DEPOSIT,"1,235.00","1,989.90"\n'
-)
+BOFA_DETAIL_FIXTURE = Path(__file__).parent / "fixtures/bofa_detail_real_shape.csv"
+BOFA_DETAIL_CSV_BYTES = BOFA_DETAIL_FIXTURE.read_bytes()
+BOFA_DETAIL_CSV = BOFA_DETAIL_CSV_BYTES.decode("ascii")
 
 
 def _mk_bank_account(db_session):
@@ -127,14 +118,18 @@ def test_parse_paypal_new_format():
 
 
 def test_parse_bofa_detail_after_summary_preamble():
+    # The fixture preserves the line endings emitted by both real exports.
+    assert b"\r\n" in BOFA_DETAIL_CSV_BYTES
+    assert b"\n" not in BOFA_DETAIL_CSV_BYTES.replace(b"\r\n", b"")
+
     result = parse_csv(BOFA_DETAIL_CSV)
     assert result["format"] == "bofa_detail"
     assert result["error"] is None
     txns = result["transactions"]
-    assert len(txns) == 3
-    assert txns[0]["amount"] == Decimal("4.90")
+    assert len(txns) == 2
+    assert txns[0]["payee"] == "SYNTHETIC PAYOR, LLC CREDIT"
+    assert txns[0]["amount"] == Decimal("1250.00")
     assert txns[1]["amount"] == Decimal("-250.00")
-    assert txns[-1]["amount"] == Decimal("1235.00")
 
 
 # ── Import + dedup ───────────────────────────────────────────────────────
@@ -168,7 +163,7 @@ def test_bofa_reimport_skips_everything(db_session):
     ba = _mk_bank_account(db_session)
     first = import_csv_transactions(db_session, ba.id, BOFA_DETAIL_CSV)
     assert first["format"] == "bofa_detail"
-    assert first["imported"] == 3
+    assert first["imported"] == 2
     assert first["matched"] == 0
 
     rows = (
@@ -176,12 +171,12 @@ def test_bofa_reimport_skips_everything(db_session):
         .filter(BankTransaction.bank_account_id == ba.id)
         .all()
     )
-    assert len(rows) == 3
+    assert len(rows) == 2
     assert all(row.import_source == "csv_bofa_detail" for row in rows)
 
     second = import_csv_transactions(db_session, ba.id, BOFA_DETAIL_CSV)
     assert second["imported"] == 0
-    assert second["skipped"] == 3
+    assert second["skipped"] == 2
 
 
 def test_overlapping_export_skips_only_known_rows(db_session):
