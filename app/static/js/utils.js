@@ -506,3 +506,81 @@ function currencyPayloadFromForm(form) {
     const rate = form.exchange_rate ? parseFloat(form.exchange_rate.value) : null;
     return { currency: currency || null, exchange_rate: rate || null };
 }
+
+// ---------------------------------------------------------------------------
+// Clipboard — one helper, because the failure is invisible to whoever built it
+//
+// `navigator.clipboard` requires a SECURE CONTEXT. The desktop app is served
+// over plain HTTP and it works anyway, for exactly one reason: loopback is a
+// secure origin by specification. `http://127.0.0.1` and `http://localhost`
+// qualify; `http://192.168.x.x` does not.
+//
+// So every copy button in this application works on the machine running it and
+// silently stops working for anyone reaching it over a LAN — `--serve-lan`,
+// Server Edition, Docker published on a host address, a tablet on the Wi-Fi.
+// A developer cannot reproduce that, and neither can a QA gate: both run on
+// loopback. Found on the 2.11.1 gate by measuring `isSecureContext` rather
+// than by anything failing (issue #137).
+//
+// Hence: name the real cause when we know it, and leave the text SELECTED so
+// the fallback is one keystroke rather than an instruction to aim a mouse.
+function _selectElementText(el) {
+    if (!el || !window.getSelection || !document.createRange) return false;
+    try {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Copy `text`, reporting honestly when it cannot.
+ *
+ * @param {string} text      what to copy
+ * @param {string} label     what to call it in the message, e.g. 'Token'
+ * @param {Element} [el]     the element showing it; selected on failure so
+ *                           the operator can just press the copy shortcut
+ * @returns {Promise<boolean>} whether it reached the clipboard
+ */
+async function copyToClipboard(text, label = 'Text', el = null) {
+    if (!text) {
+        toast(`No ${label.toLowerCase()} to copy.`, 'error');
+        return false;
+    }
+
+    const manual = _selectElementText(el)
+        ? 'It is selected — press Ctrl+C (⌘C on a Mac).'
+        : `Select the ${label.toLowerCase()} and copy it manually.`;
+
+    // The cause worth naming, because it is the one nobody can reproduce.
+    if (!window.isSecureContext) {
+        toast(
+            `Copying needs a secure connection, and this page was opened over `
+            + `plain HTTP on a network address. ${manual} `
+            + `(Opening SlowBooks on this machine copies normally.)`,
+            'error',
+        );
+        return false;
+    }
+
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        toast(`This browser will not let the page copy for you. ${manual}`, 'error');
+        return false;
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        toast(`${label} copied to clipboard`);
+        return true;
+    } catch (e) {
+        // Permission refused, or the window was not focused at the moment of
+        // the write. Both are recoverable by hand.
+        toast(`Couldn't copy. ${manual}`, 'error');
+        return false;
+    }
+}

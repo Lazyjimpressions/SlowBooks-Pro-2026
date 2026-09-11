@@ -150,11 +150,14 @@ const InvoicesPage = {
     },
 
     async copyPaymentLink(id) {
+        let data;
         try {
-            const data = await API.get(`/payments/payment-link/${id}`);
-            await navigator.clipboard.writeText(data.url);
-            toast('Payment link copied to clipboard');
-        } catch (err) { toast(err.message, 'error'); }
+            data = await API.get(`/payments/payment-link/${id}`);
+        } catch (err) { toast(err.message, 'error'); return; }
+        // Fetching the link and copying it fail for unrelated reasons, and
+        // reporting a clipboard refusal as an API error sent people looking
+        // in the wrong place.
+        return copyToClipboard(data.url, 'Payment link');
     },
 
     // Desktop-mode fallback: webhooks can't reach 127.0.0.1, so poll the

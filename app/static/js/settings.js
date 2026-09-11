@@ -517,22 +517,14 @@ const SettingsPage = {
             $('#api-token-secret').textContent = created.token;
             $('#api-token-reveal').style.display = '';
             $('#token-new-label').value = '';
-            toast('Token created — copy it now, it will not be shown again');
+            toast('Token created — press Copy below, it will not be shown again');
             SettingsPage.loadApiTokens();
         } catch (err) { toast(err.message, 'error'); }
     },
 
     copyApiTokenSecret() {
-        const text = $('#api-token-secret').textContent;
-        if (!text) return;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(
-                () => toast('Token copied to clipboard'),
-                () => toast('Couldn\'t copy — select the token above and copy manually.', 'error'),
-            );
-        } else {
-            toast('Clipboard API unavailable — select the token above and copy manually.', 'error');
-        }
+        const el = $('#api-token-secret');
+        return copyToClipboard(el ? el.textContent : '', 'Token', el);
     },
 
     async updateApiToken(id, patch) {
