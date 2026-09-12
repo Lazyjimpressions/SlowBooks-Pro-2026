@@ -61,6 +61,10 @@ datas += _tree("app/templates", "app/templates")
 # they must exist on disk in the bundle, not just inside the PYZ.
 datas += _tree("migrations", "migrations")
 
+# Named by app.main's startup refusal for a half-upgraded database (#132).
+# See #144: the message has to point somewhere the reader can actually go.
+datas += [(os.path.join(ROOT, "scripts", "repair-schema.py"), "scripts")]
+
 # PyInstaller's WeasyPrint hook uses ctypes.util.find_library(), which does
 # not find Homebrew libraries on Apple Silicon. Seed the six libraries that
 # WeasyPrint dlopens; PyInstaller follows and rewrites their dependency

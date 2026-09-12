@@ -59,6 +59,13 @@ datas += _tree("migrations", "migrations")
 # portable copy can register the startup task without downloading anything:
 #   _internal\scripts\windows\serveredition-install.ps1
 datas += _tree("scripts/windows", "scripts/windows")
+# repair-schema.py is named by app.main's startup refusal when it meets a
+# half-upgraded database (#132). Server Edition is precisely the deployment
+# shape that refusal exists for, and its install scripts ship in this bundle
+# — so the operator most likely to read the message was the one least likely
+# to have the file (#144). An error naming a path the reader cannot reach is
+# the same defect as "deactivate it instead" with no deactivate control.
+datas += [(os.path.join(ROOT, "scripts", "repair-schema.py"), "scripts")]
 
 # The WeasyPrint DLL set staged by CI (empty when building without it, so a
 # local `pyinstaller SlowBooksPro.spec` still produces a testable bundle).

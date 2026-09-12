@@ -281,11 +281,17 @@ def _refuse_a_database_behind_head() -> None:
         from app.services.schema_repair import looks_half_upgraded
 
         if looks_half_upgraded(engine):
+            # Name the path that exists on THIS install. Frozen bundles put
+            # it under _internal/scripts; a checkout has it at scripts/.
+            # Printing the repo path at a Server Edition operator who only
+            # has the bundle is the defect #144 was about.
+            from app.services.schema_repair import repair_script_path
+
             remedy = (
                 "A server has already been started against this database "
                 "while it was behind, so `alembic upgrade head` will fail on "
                 "a table that already exists. Repair it with:\n"
-                "    python3 scripts/repair-schema.py --database-url <url>\n"
+                f"    python3 {repair_script_path()} --database-url <url>\n"
                 "which drops only the empty tables left behind and then "
                 "upgrades. Take a copy first."
             )

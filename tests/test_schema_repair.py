@@ -200,3 +200,57 @@ def test_the_startup_refusal_still_says_upgrade_for_an_ordinary_old_file(
     detail = str(e.value)
     assert "alembic upgrade head" in detail
     assert "repair-schema.py" not in detail
+
+
+# ── #144: the message must name a path that exists ───────────────────────
+
+
+def test_the_refusal_names_a_path_that_exists():
+    """Found during check 0 on the published v2.12.0 artifact.
+
+    The guard printed `scripts/repair-schema.py`, and that file was **not in
+    the bundle** — `scripts/` ships selectively and the zip carried only the
+    three Server Edition PowerShell files. Server Edition is precisely the
+    deployment shape the half-upgraded branch exists for, so the operator
+    most likely to read the message was the one least likely to have the
+    file. An error naming a path the reader cannot reach is the same defect
+    as #139's "deactivate it instead" with no deactivate control.
+    """
+    from pathlib import Path
+
+    from app.services.schema_repair import repair_script_path
+
+    assert Path(
+        repair_script_path()
+    ).exists(), "the startup refusal names a script that is not there"
+
+
+def test_both_specs_ship_the_repair_script():
+    """The other half: it has to be IN the bundle for the resolved path to
+    find it. Guarded in the spec rather than trusted, because the only way
+    to notice it was missing was to unzip a released artifact."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    for spec in (
+        "packaging/windows/SlowBooksPro.spec",
+        "packaging/macos/SlowBooksPro-mac.spec",
+    ):
+        src = (root / spec).read_text(encoding="utf-8")
+        assert "repair-schema.py" in src, f"{spec} does not ship the repair script"
+
+
+def test_the_frozen_path_is_preferred_when_it_exists(tmp_path, monkeypatch):
+    """A bundle resolves to its own copy, not to a repo path that will not be
+    there on an installed machine."""
+    import sys
+
+    from app.services import schema_repair
+
+    fake = tmp_path / "scripts"
+    fake.mkdir()
+    (fake / "repair-schema.py").write_text("# bundled copy\n")
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+
+    got = schema_repair.repair_script_path()
+    assert got == str(fake / "repair-schema.py")

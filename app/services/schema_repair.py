@@ -54,6 +54,30 @@ class RepairResult:
     message: str = ""
 
 
+def repair_script_path() -> str:
+    """Where `repair-schema.py` actually is on this install.
+
+    A frozen bundle puts data files under `sys._MEIPASS`, so the script lives
+    at `_internal/scripts/repair-schema.py` rather than at `scripts/` — and
+    the startup refusal that names it is read mostly by Server Edition
+    operators, who may only have the bundle (#144). Falls back to the
+    repo-relative path, which is right for a checkout and is also the least
+    misleading thing to print if the file is missing entirely.
+    """
+    import sys
+
+    base = getattr(sys, "_MEIPASS", None)
+    if base:
+        bundled = Path(base) / "scripts" / "repair-schema.py"
+        if bundled.exists():
+            return str(bundled)
+    return str(
+        (ROOT / "scripts" / "repair-schema.py").resolve()
+        if (ROOT / "scripts" / "repair-schema.py").exists()
+        else "scripts/repair-schema.py"
+    )
+
+
 def _alembic_cfg(url: str):
     from alembic.config import Config
 

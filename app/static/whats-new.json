@@ -1,4 +1,11 @@
 {
+  "2.12.1": {
+    "title": "See an email template before you save it",
+    "items": [
+      "Preview an email template edit against a real invoice before saving it. Editing the invoice email used to mean saving over a working template and mailing a customer to find out what it looked like — contributed by mdornich",
+      "The message shown when the app refuses to open a company file older than itself now names a repair script that is actually there. It named a path that was not included in the installed app"
+    ]
+  },
   "2.12.0": {
     "title": "Your chart, your templates, your clipboard",
     "items": [

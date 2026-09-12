@@ -7,6 +7,41 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.12.1 — See an email template before you save it
+
+**Preview an email template edit against a real invoice, before saving it.**
+Contributed by @mdornich. v2.12.0 added a preview to the Email Invoice
+dialog; this is the other half of the same idea. An operator editing the
+invoice email under Settings still had no way to see an edit except by
+saving over a working template and mailing a real customer to find out.
+
+`POST /api/email-templates/preview` renders the text currently in the editor
+against an invoice you pick. Nothing saved, nothing sent — asserted by
+counting rows either side rather than claimed. The preview and the mail share
+one template environment, because a preview rendering under different rules
+than the mail is the same class of problem as the template and the send
+disagreeing, which is what the previous release was about.
+
+Credentials stay redacted in the preview by construction rather than by
+remembering: it builds its context through the same helper the send does, so
+the protection added in 2.12.0 covers this endpoint without anyone having to
+notice it needed to.
+
+Two things he deliberately left out, both correctly. Validating a template at
+save time would mean a bad expression can stop an invoice going out, and
+degrading to the built-in body is the better behaviour — the preview is where
+an operator should find out instead. And this is its own endpoint rather than
+an option on the send preview, because widening a request model that a
+sending route shares is how a surface grows a capability nobody audited.
+
+**The refusal to open an older company file now names a script that exists.**
+Found by inspecting the published 2.12.0 artifact rather than the source: the
+message named `scripts/repair-schema.py`, and that file was not in the
+installed application. Files are bundled selectively, and the repair script
+was not among them — so the operator most likely to read that message was the
+one least likely to have the file. It ships now, on both platforms, and the
+message resolves the path that exists on the machine it is printed on.
+
 **You can see a template edit before you save it.** Editing `invoice_email`
 under Settings -> Email Templates still meant saving over a working template
 and mailing a real customer to find out what it looked like. The editor now
