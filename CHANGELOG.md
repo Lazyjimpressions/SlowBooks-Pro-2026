@@ -52,6 +52,20 @@ to close it checked that the named file existed, which is exactly the check
 that passes while the instruction still fails. It now takes the command out
 of the message and runs it.
 
+**A template preview says what came out blank.** Some things an operator
+might type — `{{ config }}`, `{{ request }}`, anything the template sandbox
+refuses — are simply not available to an email template, so they render as
+nothing. The preview showed a working template with a hole in it and no
+reason for the hole, which is the one outcome that tells the author nothing
+at all.
+
+The preview now lists what resolved to nothing, beside the rendered output.
+The output itself is unchanged and still byte-identical to what would be
+sent, because a preview that renders under different rules is not a preview.
+Raised by the macOS QA agent, who noticed it while running a battery of
+deliberately hostile template input and pointed out that silently-empty
+deserved a decision rather than being inherited.
+
 **Repairing a damaged file no longer gets slower the more tables are
 involved.** Each attempt restarted the whole upgrade, so the work doubled
 with every table in the way: three tables took seven passes, and five would

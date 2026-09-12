@@ -802,7 +802,19 @@ const SettingsPage = {
                 subject_template: form.elements.subject_template.value,
                 body_template: form.elements.body_template.value,
             });
+            // A blank where the author expected content is the one outcome
+            // that explains nothing. The server reports what resolved to
+            // nothing; say so next to the preview rather than leaving them
+            // looking at a hole.
+            const missing = p.resolved_to_nothing || [];
+            const note = missing.length
+                ? `<p class="form-hint" style="margin-top:8px;color:var(--text-warning,#92400e);">
+                       <strong>Rendered as nothing:</strong> ${missing.map(escapeHtml).join(', ')}.
+                       These are not available to an email template, so they came out blank —
+                       the email would send with the same gaps.</p>`
+                : '';
             out.innerHTML = `<p style="margin-top:8px;"><strong>Subject:</strong> ${escapeHtml(p.subject)}</p>
+                ${note}
                 <iframe id="email-template-rendered" sandbox="" title="Template preview" style="width:100%;height:320px;border:1px solid var(--gray-300);background:white;"></iframe>`;
             const frame = document.getElementById('email-template-rendered');
             if (frame) frame.srcdoc = p.html_body;

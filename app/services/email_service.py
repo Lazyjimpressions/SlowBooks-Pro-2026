@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Undefined
 from sqlalchemy.orm import Session
 
 from app.models.email_log import EmailLog
@@ -168,6 +168,58 @@ def template_env():
     env.filters["currency"] = _format_currency
     env.filters["fdate"] = _format_date
     return env
+
+
+class RecordingUndefined(Undefined):
+    """Renders as nothing, like the default, and remembers that it did.
+
+    A preview that renders a blank is the one outcome that tells its author
+    nothing at all. `{{ config }}`, `{{ request }}` and a name the sandbox
+    refuses all resolve to undefined and render as empty — so the operator
+    sees a working template with a hole in it and no reason for the hole.
+    That is the same class as an error naming a command nobody can run, which
+    this product has now shipped four times.
+
+    The fix is NOT to make the preview strict. The preview must render under
+    the same rules as the mail, or it is not a preview — so this behaves
+    exactly like `Undefined` and simply records what it was asked for. The
+    preview reports the list alongside the body; the send never sees it.
+    """
+
+    _seen: list = []
+
+    def _record(self):
+        name = self._undefined_name or "a value"
+        if name not in RecordingUndefined._seen:
+            RecordingUndefined._seen.append(name)
+
+    def __str__(self):  # noqa: D105 — Jinja renders through this
+        self._record()
+        return ""
+
+    def __html__(self):
+        self._record()
+        return ""
+
+    def __iter__(self):
+        self._record()
+        return iter(())
+
+    def __bool__(self):
+        self._record()
+        return False
+
+
+def recording_template_env():
+    """`template_env()` plus a note of everything that resolved to nothing.
+
+    Returns (env, seen) where `seen` is filled during render. Used only by the
+    preview — the send path must not pay for this or behave differently.
+    """
+    env = template_env()
+    RecordingUndefined._seen = []
+    env.undefined = RecordingUndefined
+    return env, RecordingUndefined._seen
 
 
 def invoice_email_label(invoice, company_settings: dict) -> str:

@@ -108,7 +108,10 @@ def preview_template(
     from jinja2 import TemplateError
 
     from app.models.invoices import Invoice
-    from app.services.email_service import invoice_email_context, template_env
+    from app.services.email_service import (
+        invoice_email_context,
+        recording_template_env,
+    )
     from app.services.payments import enabled_providers
     from app.services.settings_service import get_all_settings
 
@@ -122,7 +125,7 @@ def preview_template(
         pay_url = f"{str(request.base_url).rstrip('/')}/pay/{inv.payment_token}"
 
     ctx = invoice_email_context(inv, company, pay_url=pay_url)
-    env = template_env()
+    env, resolved_to_nothing = recording_template_env()
     try:
         subject = env.from_string(data.subject_template).render(**ctx)
         body = env.from_string(data.body_template).render(**ctx)
@@ -137,7 +140,17 @@ def preview_template(
                 "variables and syntax."
             ),
         ) from exc
-    return {"subject": subject, "html_body": body}
+    # A blank where the author expected content is the one outcome that
+    # explains nothing. `{{ config }}`, `{{ request }}` and anything the
+    # sandbox refuses all render as empty, so the preview looks like a
+    # working template with a hole in it. The body is byte-identical to what
+    # would be sent — the preview would not be a preview otherwise — and the
+    # names that resolved to nothing are reported beside it.
+    return {
+        "subject": subject,
+        "html_body": body,
+        "resolved_to_nothing": list(resolved_to_nothing),
+    }
 
 
 @router.post("", response_model=EmailTemplateResponse, status_code=201)
