@@ -1,9 +1,10 @@
 # ============================================================================
 # Slowbooks Pro 2026 — pytest configuration
 #
-# Each test gets a fresh in-memory SQLite database via the db_engine fixture.
-# The `client` fixture wires the app's get_db dependency to that same engine
-# so API calls and direct db_session queries hit the same tables.
+# One in-memory SQLite database for the whole run, built once; each test
+# runs inside a transaction on it that is rolled back at the end (issue
+# #128). The `client` fixture wires the app's get_db dependency to that same
+# connection so API calls and direct db_session queries hit the same tables.
 # Rate limiting is disabled by default so per-test counters don't collide.
 # ============================================================================
 
@@ -87,8 +88,8 @@ def pytest_runtest_call(item):
 
 from starlette.requests import HTTPConnection  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
-from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy import create_engine, event  # noqa: E402
+from sqlalchemy.orm import close_all_sessions, sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 # Import all model modules so Base.metadata sees every table before create_all.
@@ -138,12 +139,7 @@ from app.seed.chart_of_accounts import CHART_OF_ACCOUNTS  # noqa: E402
 from app.main import app  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# Per-test in-memory engine — every test gets a clean slate
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# ONE session factory for the whole suite, rebound to each test's engine.
+# ONE session factory for the whole suite.
 #
 # Issue #124: the suite used to build a fresh sessionmaker per test — two of
 # them, in fact — and call register_audit_hooks() on each. That is ~4,060
@@ -153,9 +149,7 @@ from app.main import app  # noqa: E402
 # the suite at a random point on a memory-constrained Windows box.
 #
 # A sessionmaker can be re-pointed with .configure(bind=...), so one factory
-# serves every test and the listener is attached exactly once. Per-test
-# isolation is unchanged: the ENGINE is still new for each test, so each gets
-# its own empty in-memory database.
+# serves every test and the listener is attached exactly once.
 #
 # The old comment here warned that id-reuse across short-lived factories made
 # `event.contains` unreliable. With one long-lived factory that hazard is gone
@@ -164,36 +158,136 @@ from app.main import app  # noqa: E402
 _SUITE_SESSION_FACTORY = sessionmaker(autocommit=False, autoflush=False)
 
 
-def _shared_factory(engine):
+def _shared_factory(bind):
     from app.services.audit import register_audit_hooks
 
-    _SUITE_SESSION_FACTORY.configure(bind=engine)
+    # create_savepoint: every Session on this connection — the test's, the
+    # client's, one the app opens itself — runs in its own SAVEPOINT, so
+    # session.commit() releases the savepoint and never touches the outer
+    # transaction that the db_engine fixture rolls back.
+    _SUITE_SESSION_FACTORY.configure(
+        bind=bind, join_transaction_mode="create_savepoint"
+    )
     register_audit_hooks(_SUITE_SESSION_FACTORY)  # idempotent via its sentinel
     return _SUITE_SESSION_FACTORY
 
 
-@pytest.fixture
-def db_engine():
-    """Per-test in-memory SQLite engine with full schema."""
+def _test_engine(url="sqlite:///:memory:"):
     engine = create_engine(
-        "sqlite:///:memory:",
+        url,
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+
+    # pysqlite's legacy transaction handling never emits BEGIN for a
+    # SAVEPOINT, so a savepoint released before any BEGIN "functions on its
+    # own" and a rollback of the enclosing transaction leaves it in place —
+    # the exact failure that would make a test pass while leaking rows into
+    # the next one. SQLAlchemy's documented fix: take BEGIN away from the
+    # driver and emit it ourselves.
+    @event.listens_for(engine, "connect")
+    def _no_implicit_begin(dbapi_connection, _record):
+        dbapi_connection.isolation_level = None
+        # A file-backed database at memory speed: nothing here needs to
+        # survive a crash, and the file exists only so the database does
+        # (see _suite_engine).
+        cur = dbapi_connection.cursor()
+        cur.execute("PRAGMA journal_mode=MEMORY")
+        cur.execute("PRAGMA synchronous=OFF")
+        cur.execute("PRAGMA temp_store=MEMORY")
+        cur.close()
+
+    @event.listens_for(engine, "begin")
+    def _explicit_begin(conn):
+        conn.exec_driver_sql("BEGIN")
+
     Base.metadata.create_all(bind=engine)
-    # Point the app module at this engine so SessionLocal-based code (audit
-    # hooks, etc.) also lands in the same DB.
-    db_module.engine = engine
-    db_module.SessionLocal = _shared_factory(engine)
+    return engine
+
+
+# ---------------------------------------------------------------------------
+# Issue #128: one engine and one schema for the whole run.
+#
+# Every test used to build its own engine and create_all() into it. Live
+# objects grew all run long (795k -> 1.36M, mostly DDL event dispatch and
+# column types that never freed), and the cost was linear in the size of the
+# suite. Now the schema exists once; a test gets a connection with an open
+# transaction, everything it does nests inside that as savepoints, and the
+# transaction is rolled back at the end. Isolation is by rollback, not by
+# rebuilding the world — and rowids restart with it, so `id == 1` still holds.
+#
+# The proof that no test sees another's data is a shuffled-order run, not
+# this comment: see the 2.13.0 gate record.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def _suite_engine(tmp_path_factory):
+    # A file rather than :memory:, for one reason: restoring a backup calls
+    # db_module.engine.dispose() so the app re-reads the overwritten file.
+    # On a :memory: database, closing the connection IS deleting the
+    # database — one restore test and every test after it would find an
+    # empty schema. On a file, dispose just reconnects.
+    path = tmp_path_factory.mktemp("suite") / "suite.db"
+    engine = _test_engine("sqlite:///" + path.as_posix())
     yield engine
     engine.dispose()
 
 
+# Tables that are empty at the start of every test. A test that commits
+# outside its transaction (after a dispose, say) shows up here at the NEXT
+# test's setup, named, rather than as a mystery failure three files later.
+_SENTINEL_TABLES = ("accounts", "customers", "vendors", "transactions", "users")
+_previous_test = {"nodeid": "(none)"}
+
+
+def _assert_pristine(connection, nodeid):
+    from sqlalchemy import text
+
+    for table in _SENTINEL_TABLES:
+        n = connection.execute(text(f"SELECT count(*) FROM {table}")).scalar()
+        if n:
+            pytest.fail(
+                f"{table} has {n} row(s) at the start of {nodeid}: a previous "
+                f"test ({_previous_test['nodeid']}) committed outside its "
+                "transaction, so its rows leaked into this one"
+            )
+
+
+@pytest.fixture
+def db_engine(_suite_engine, request):
+    """The suite's engine, with this test's transaction open on it. Rolled
+    back — every row the test wrote, whether it committed or not — at exit."""
+    connection = _suite_engine.connect()
+    outer = connection.begin()
+    _assert_pristine(connection, request.node.nodeid)
+    # Point the app module at this engine so SessionLocal-based code (the
+    # startup helpers, api_token_service, encryption) also lands in the
+    # same transaction.
+    db_module.engine = _suite_engine
+    db_module.SessionLocal = _shared_factory(connection)
+    try:
+        yield _suite_engine
+    finally:
+        _previous_test["nodeid"] = request.node.nodeid
+        close_all_sessions()
+        # A test that disposed the engine already lost this connection;
+        # what it wrote after that is the sentinel's job to catch.
+        try:
+            outer.rollback()
+        except Exception:
+            pass
+        try:
+            connection.close()
+        except Exception:
+            pass
+
+
 @pytest.fixture
 def TestSession(db_engine):
-    """The suite's session factory, bound to this test's engine. The `client`
-    fixture wires get_db to this."""
-    return _shared_factory(db_engine)
+    """The suite's session factory, bound to this test's transaction. The
+    `client` fixture wires get_db to this."""
+    return _SUITE_SESSION_FACTORY
 
 
 @pytest.fixture
@@ -306,17 +400,27 @@ def client(db_engine, TestSession):
 
 
 @pytest.fixture
-def lifespan_client(db_engine, TestSession):
+def lifespan_client():
     """An authenticated client with the app's startup events actually run.
 
     Use this only for a test that asserts on startup behaviour; `client` skips
-    the lifespan on purpose (issue #124)."""
-    _wire_app(TestSession)
-    with TestClient(app) as c:
-        r = c.post("/api/auth/setup", json={"password": "test-password-123"})
-        assert r.status_code == 200, f"Auth setup failed: {r.text}"
-        yield c
-    app.dependency_overrides.clear()
+    the lifespan on purpose (issue #124). Startup opens engine-level
+    transactions (the migration guard, create_all), which cannot nest inside
+    a test's open transaction — so this one gets a private engine of its own,
+    the way every test used to."""
+    engine = _test_engine()
+    db_module.engine = engine
+    db_module.SessionLocal = _shared_factory(engine)
+    _wire_app(_SUITE_SESSION_FACTORY)
+    try:
+        with TestClient(app) as c:
+            r = c.post("/api/auth/setup", json={"password": "test-password-123"})
+            assert r.status_code == 200, f"Auth setup failed: {r.text}"
+            yield c
+    finally:
+        app.dependency_overrides.clear()
+        close_all_sessions()
+        engine.dispose()
 
 
 @pytest.fixture
