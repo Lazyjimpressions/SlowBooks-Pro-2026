@@ -19,6 +19,7 @@ from app.services.accounting import (
     get_ar_account_id,
     get_undeposited_funds_id,
 )
+from app.services.terminology import terms_from_db
 
 
 def record_provider_payment(
@@ -108,7 +109,9 @@ def record_provider_payment(
         txn = create_journal_entry(
             db,
             date.today(),
-            f"{provider_display_name} payment — Invoice #{invoice.invoice_number}",
+            terms_from_db(db).text(
+                f"{provider_display_name} payment — Invoice #{invoice.invoice_number}"
+            ),
             journal_lines,
             source_type="payment",
             source_id=payment.id,

@@ -74,7 +74,7 @@ def void_invoice(invoice_id: int, db: Session = Depends(get_db)):
             create_journal_entry(
                 db,
                 invoice.date,
-                f"VOID Invoice #{invoice.invoice_number}",
+                terms_from_db(db).text(f"VOID Invoice #{invoice.invoice_number}"),
                 reverse_lines,
                 source_type="invoice_void",
                 source_id=invoice.id,
@@ -137,6 +137,7 @@ def mark_invoice_sent(invoice_id: int, db: Session = Depends(get_db)):
 @router.post("/apply-late-fees")
 def apply_late_fees(db: Session = Depends(get_db)):
     """Apply late fees to overdue invoices past the grace period."""
+    words = terms_from_db(db)
     from app.models.transactions import Transaction
 
     settings_dict = get_settings(db)
@@ -209,19 +210,19 @@ def apply_late_fees(db: Session = Depends(get_db)):
                 "account_id": ar_id,
                 "debit": fee_amount,
                 "credit": Decimal("0"),
-                "description": f"Late fee - Invoice #{inv.invoice_number}",
+                "description": words.text(f"Late fee - Invoice #{inv.invoice_number}"),
             },
             {
                 "account_id": late_fee_account.id,
                 "debit": Decimal("0"),
                 "credit": fee_amount,
-                "description": f"Late fee - Invoice #{inv.invoice_number}",
+                "description": words.text(f"Late fee - Invoice #{inv.invoice_number}"),
             },
         ]
         create_journal_entry(
             db,
             today,
-            f"Late fee - Invoice #{inv.invoice_number}",
+            words.text(f"Late fee - Invoice #{inv.invoice_number}"),
             journal_lines,
             source_type="late_fee",
             source_id=inv.id,
@@ -283,7 +284,9 @@ def write_off_invoice(
 
     ar_id = get_ar_account_id(db)
     bad_debt_id = get_bad_debt_account_id(db)
-    memo = data.memo or f"Write-off: Invoice #{inv.invoice_number}"
+    memo = data.memo or terms_from_db(db).text(
+        f"Write-off: Invoice #{inv.invoice_number}"
+    )
     cm = None
     for _ in range(10):
         cm = CreditMemo(

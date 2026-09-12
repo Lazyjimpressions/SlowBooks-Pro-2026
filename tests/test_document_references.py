@@ -100,19 +100,26 @@ def test_history_keeps_the_words_it_was_posted_with(client, seed_accounts):
 
 
 def test_estimate_conversion_and_reissue_use_the_same_helper():
-    """Every site goes through document_reference — a grep, so a new site
-    written as f"Invoice #{n}" fails here before it reaches a nonprofit."""
+    """Every site goes through document_reference or text() — a grep, so a
+    new site written as f"Invoice #{n}" fails here before it reaches a
+    nonprofit. The first version only matched the word at the START of the
+    f-string; check 0 on the 2.13.1 artifact found "VOID Invoice #" and
+    "Late fee - Invoice #" waiting behind it, then six more of that shape."""
     offenders = []
     for path in list((ROOT / "app/routes").rglob("*.py")) + list(
         (ROOT / "app/services").rglob("*.py")
     ):
         if "iif_import" in path.name or "checks.py" in path.name:
             continue  # QuickBooks interop keeps QuickBooks' words; a vendor's invoice is an invoice
-        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for n, line in enumerate(lines, 1):
+            # black may put the wrapper on the line above the f-string
+            window = (lines[n - 2] if n >= 2 else "") + line
             if (
-                re.search(r'f"(Invoice|Sales Receipt) #\{', line)
-                and "HTTPException" not in line
-                and "detail=" not in line
+                re.search(r'f"[^"]*\b(Invoice|Sales Receipt) #?\{', line)
+                and "HTTPException" not in window
+                and "detail=" not in window
+                and ".text(" not in window
             ):
                 offenders.append(f"{path.relative_to(ROOT)}:{n}: {line.strip()[:80]}")
     assert offenders == [], "\n".join(offenders)
@@ -231,3 +238,33 @@ def test_email_defaults_are_seeded_in_the_company_words(client):
     assert tpl["subject_template"].startswith("Pledge #{{ invoice.invoice_number }}")
     assert "attached Pledge #" in tpl["body_template"]
     assert "Invoice" not in tpl["subject_template"] + tpl["body_template"]
+
+
+def test_void_and_late_fee_postings_speak_the_company_words(client, seed_accounts):
+    """Found by check 0 on the shipped 2.13.1 artifact, not by the grep:
+    the void reversal and the late-fee posting compose the word in the
+    middle of a sentence."""
+    client.put("/api/settings", json={"company_type": "nonprofit"})
+    cid = _customer(client, "Grant Foundation")
+    inv = _invoice(client, cid, date="2025-01-05")
+    r = client.post(f"/api/invoices/{inv['id']}/void")
+    assert r.status_code == 200, r.text
+    gl = str(client.get("/api/reports/general-ledger").json())
+    assert f"VOID Pledge #{inv['invoice_number']}" in gl
+    assert "VOID Invoice" not in gl
+
+    overdue = _invoice(client, cid, date="2025-01-05")
+    r = client.put(
+        "/api/settings",
+        json={
+            "late_fee_enabled": "true",
+            "late_fee_rate": "1.5",
+            "late_fee_grace_days": "0",
+        },
+    )
+    assert r.status_code == 200, r.text
+    r = client.post("/api/invoices/apply-late-fees")
+    assert r.status_code == 200, r.text
+    gl = str(client.get("/api/reports/general-ledger").json())
+    assert f"Late fee - Pledge #{overdue['invoice_number']}" in gl, gl[-600:]
+    assert "Late fee - Invoice" not in gl

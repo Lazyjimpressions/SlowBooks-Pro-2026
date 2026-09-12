@@ -24,10 +24,12 @@ empty state, which the 2.9.1 sweep missed because it is lower-case, is
 wrapped on the page and in the PDF. And an all-caps dictionary key was being
 treated as a shouted sentence: "P&L analysis" came out "ACTIVITIES analysis".
 
-**What a posting writes for itself is in the company's words.** Fourteen
+**What a posting writes for itself is in the company's words.** Twenty-two
 sites composed "Invoice #1081 - Boise Neon Supply" into stored ledger
-descriptions, the inventory memo, and the line item a payer sees on the
-Stripe, Square or PayPal page. A nonprofit now posts "Pledge #1081". The
+descriptions, the inventory memo, the void reversal, the late fee, the
+write-off, the recurring run, the provider payment record, and the line
+item a payer sees on the Stripe, Square or PayPal page. A nonprofit now
+posts "Pledge #1081". The
 words are chosen once, at posting time; **history is never rewritten** — a
 company that becomes a nonprofit keeps "Invoice #" on what it posted as a
 business, and the two coexist. The integrations never keyed on those words:
