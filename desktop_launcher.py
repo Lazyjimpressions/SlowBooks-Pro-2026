@@ -1388,8 +1388,6 @@ def _repair_schema(argv) -> int:
     Runs the repair in-process so it works from a frozen bundle, where a
     separate interpreter is neither present nor able to import `app`.
     """
-    from app.services.schema_repair import repair
-
     url = None
     for i, a in enumerate(argv):
         if a == "--database-url" and i + 1 < len(argv):
@@ -1402,6 +1400,23 @@ def _repair_schema(argv) -> int:
             file=sys.stderr,
         )
         return 2
+
+    # BEFORE importing anything that touches app.config, and that is the
+    # whole fix. `app/config.py` reads BASE_DIR/.env — inside the bundle when
+    # frozen, not the user's data dir — so DATABASE_URL is unset, falls back
+    # to the PostgreSQL default, and `app/database.py` creates its engine AT
+    # MODULE SCOPE. `migrations/env.py` imports that module, so the import
+    # died on psycopg2 before the migration ever looked at the URL we passed.
+    #
+    # The normal startup path already points DATABASE_URL at the chosen
+    # company file before serving; this entry point ran before that step and
+    # inherited none of it. @skytech traced it on the 2.12.1 gate, and it was
+    # the FIFTH appearance of one class: an instruction the reader cannot
+    # carry out. Their own first diagnosis was a cross-database hazard, which
+    # they tested and withdrew — the real cause is smaller and this is it.
+    os.environ["DATABASE_URL"] = url
+
+    from app.services.schema_repair import repair
 
     result = repair(url, dry_run="--dry-run" in argv)
     print(f"revision before : {result.started_at}")

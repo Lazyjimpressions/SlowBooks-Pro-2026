@@ -112,6 +112,34 @@ def repair(url: str, dry_run: bool = False) -> RepairResult:
         started = _current_revision(engine)
         result = RepairResult(ok=False, started_at=started, now_at=started)
 
+        # Prove the upgrade CAN run before destroying anything.
+        #
+        # @skytech, 2.12.1 gate: on a frozen build the migration import died
+        # on psycopg2 — and the drop phase had already completed. So the file
+        # was left worse than it started: nothing to drop any more, so the
+        # next start reports it as an ordinary old database and offers
+        # `alembic upgrade head`, which still cannot run. A loop, entered by
+        # following the instructions.
+        #
+        # A repair whose first act is irreversible and whose second act may
+        # fail for an unrelated reason is not a repair. Load the machinery
+        # first; if that cannot work, say so while the file is still intact.
+        if not dry_run:
+            try:
+                from alembic.script import ScriptDirectory
+
+                ScriptDirectory.from_config(_alembic_cfg(url)).get_current_head()
+                import app.database  # noqa: F401 — the import that failed
+            except Exception as exc:  # noqa: BLE001 — reported, not raised
+                result.message = (
+                    f"cannot run migrations here, so nothing was changed: "
+                    f"{type(exc).__name__}: {exc}. The database is exactly as "
+                    f"it was. If this is an installed build, run the repair "
+                    f"through the application itself rather than a separate "
+                    f"interpreter."
+                )
+                return result
+
         # Clear everything in the way in ONE pass, before running anything.
         #
         # @skytech measured the retry loop and it is 2**N - 1 drops, not N:

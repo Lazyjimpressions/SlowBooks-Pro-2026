@@ -76,6 +76,20 @@ Raised by the macOS QA agent, who noticed it while running a battery of
 deliberately hostile template input and pointed out that silently-empty
 deserved a decision rather than being inherited.
 
+**And a repair that cannot finish no longer starts.** The repair used to
+clear the tables in its way and only then discover whether it could run the
+upgrade at all — so on an installed application, where it could not, the file
+was left with nothing to clear and the same problem, and the next attempt
+offered a different instruction that also could not work. A loop entered by
+following the instructions. It now loads what it needs first and, if that
+cannot work, says so while the file is still untouched.
+
+The reason it could not work on an installed application was that the repair
+ran before the application had worked out which company file it was talking
+about, so it fell back to looking for a database server that is not there.
+Found by the Windows QA agent, who first reported a different cause, tested
+it, and withdrew that half of their own report.
+
 **Repairing a damaged file no longer gets slower the more tables are
 involved.** Each attempt restarted the whole upgrade, so the work doubled
 with every table in the way: three tables took seven passes, and five would

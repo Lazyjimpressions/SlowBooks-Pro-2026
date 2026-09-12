@@ -335,3 +335,67 @@ def test_both_specs_ship_the_repair_script():
     ):
         src = (root / spec).read_text(encoding="utf-8")
         assert "repair-schema.py" in src, f"{spec} does not ship the repair script"
+
+
+def test_nothing_is_dropped_when_the_migration_cannot_run(tmp_path, monkeypatch):
+    """@skytech, 2.12.1 gate: on a frozen build the migration import died on
+    psycopg2 **after the drop phase had completed**, leaving the file worse
+    than it started — nothing left to drop, so the next start reported it as
+    an ordinary old database and offered a command that still could not run.
+    A loop, entered by following the instructions.
+
+    A repair whose first act is irreversible and whose second act may fail
+    for an unrelated reason is not a repair.
+    """
+    from sqlalchemy import inspect as _inspect
+
+    from app.services import schema_repair
+
+    db, added = _half_upgraded(tmp_path, name="cannot_run.db")
+    before = set(_inspect(create_engine(f"sqlite:///{db}")).get_table_names())
+
+    # Stand in for the import that failed on the frozen bundle.
+    real = schema_repair._alembic_cfg
+
+    def boom(url):
+        raise ModuleNotFoundError("No module named 'psycopg2'")
+
+    monkeypatch.setattr(schema_repair, "_alembic_cfg", boom)
+    result = schema_repair.repair(f"sqlite:///{db}")
+    monkeypatch.setattr(schema_repair, "_alembic_cfg", real)
+
+    assert not result.ok
+    assert result.dropped == [], "it dropped tables it could not then replace"
+    assert "nothing was changed" in result.message
+    assert "psycopg2" in result.message, "say what actually stopped it"
+
+    after = set(_inspect(create_engine(f"sqlite:///{db}")).get_table_names())
+    assert after == before, "the file was modified by a repair that failed"
+    assert _rev(db) != _head()
+
+
+def test_the_repair_entry_point_sets_the_database_url_first():
+    """The cause, guarded at the source.
+
+    `app/config.py` reads `BASE_DIR/.env`, which is inside the bundle when
+    frozen rather than in the user's data directory, so `DATABASE_URL` was
+    unset and fell back to the PostgreSQL default — and `app/database.py`
+    builds its engine at module scope, which `migrations/env.py` imports. The
+    import died before the migration looked at the URL we passed.
+
+    So the assignment has to come before the import, and a later edit that
+    reorders them would reintroduce a defect no test on this machine can
+    reach, because a checkout always has a working `DATABASE_URL`.
+    """
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "desktop_launcher.py").read_text(
+        encoding="utf-8"
+    )
+    body = src[src.index("def _repair_schema(") :]
+    body = body[: body.index("\ndef ")]
+
+    assert 'os.environ["DATABASE_URL"] = url' in body
+    assert body.index('os.environ["DATABASE_URL"] = url') < body.index(
+        "from app.services.schema_repair import repair"
+    ), "the import happens before the URL is set; that is the original defect"
