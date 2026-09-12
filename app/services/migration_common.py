@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.models.accounts import Account
 from app.services.accounting import _q, create_journal_entry
+from app.services.safe_errors import DataProblem
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ def parse_amount(raw: str) -> Decimal:
     try:
         value = Decimal(raw)
     except InvalidOperation:
-        raise ValueError(f"unparseable amount: {raw!r}")
+        raise DataProblem(f"unparseable amount: {raw!r}")
     return -value if negative else value
 
 
@@ -65,7 +66,7 @@ def parse_date(raw: str, formats: tuple[str, ...]):
             return datetime.strptime(raw, fmt).date()
         except ValueError:
             continue
-    raise ValueError(f"unparseable date: {raw!r}")
+    raise DataProblem(f"unparseable date: {raw!r}")
 
 
 def sniff_reader(csv_text: str) -> csv.DictReader:

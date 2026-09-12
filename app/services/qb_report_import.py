@@ -39,6 +39,7 @@ from app.services.accounting import (
     get_undeposited_funds_id,
 )
 from app.services.iif_import import _find_account
+from app.services.safe_errors import DataProblem, safe_message
 
 logger = logging.getLogger(__name__)
 
@@ -408,16 +409,13 @@ def import_sales_receipt_report(db: Session, csv_text: str) -> dict:
 
             sp.commit()
             result["imported"] += 1
-        except (ValueError, LookupError, InvalidOperation) as e:
-            # data problems carry our own wording — keep it for the user
+        except Exception as e:
+            # A DataProblem carries its own sentence; Python's own errors
+            # are bugs — logged with the traceback, answered generically.
             sp.rollback()
-            result["errors"].append(f"Receipt {rec.get('num') or rec['row']}: {e}")
-        except Exception:
-            sp.rollback()
-            logger.exception("QB report import row failed")
             result["errors"].append(
-                f"Receipt {rec.get('num') or rec['row']}"
-                + ": unexpected error — the server log has the details"
+                f"Receipt {rec.get('num') or rec['row']}: "
+                + safe_message(e, "QB report import")
             )
 
     db.commit()
@@ -487,14 +485,14 @@ def import_deposit_report(db: Session, csv_text: str) -> dict:
             hdr = block["header"]
             dep_date = _parse_date(_cell(hdr, cols, "Date"))
             if dep_date is None:
-                raise ValueError("deposit row has no parseable date")
+                raise DataProblem("deposit row has no parseable date")
             bank_name = _cell(hdr, cols, "Account")
             bank = _find_account(db, bank_name)
             if not bank:
-                raise ValueError(f"bank account '{bank_name}' not found")
+                raise DataProblem(f"bank account '{bank_name}' not found")
             total = _q(_amount(_cell(hdr, cols, "Amount")))
             if total <= 0:
-                raise ValueError(f"deposit total {total} is not positive")
+                raise DataProblem(f"deposit total {total} is not positive")
 
             # Sum-to-zero: header total + detail amounts must cancel.
             detail = []
@@ -503,14 +501,14 @@ def import_deposit_report(db: Session, csv_text: str) -> dict:
                 acct_name = _cell(drow, cols, "Account")
                 acct = _find_account(db, acct_name)
                 if not acct:
-                    raise ValueError(
+                    raise DataProblem(
                         f"source account '{acct_name}' not found - import "
                         "your chart of accounts (IIF lists) first"
                     )
                 detail.append((acct, amt, _cell(drow, cols, "Name")))
             residual = total + sum(a for _, a, _ in detail)
             if abs(residual) > Decimal("0.01"):
-                raise ValueError(
+                raise DataProblem(
                     f"block does not balance (residual {residual}); "
                     "export the report with all its rows"
                 )
@@ -561,16 +559,13 @@ def import_deposit_report(db: Session, csv_text: str) -> dict:
             )
             sp.commit()
             result["deposits"] += 1
-        except (ValueError, LookupError, InvalidOperation) as e:
-            # data problems carry our own wording — keep it for the user
+        except Exception as e:
+            # A DataProblem carries its own sentence; Python's own errors
+            # are bugs — logged with the traceback, answered generically.
             sp.rollback()
-            result["errors"].append(f"Deposit block at row {block['row']}: {e}")
-        except Exception:
-            sp.rollback()
-            logger.exception("QB report import row failed")
             result["errors"].append(
-                f"Deposit block at row {block['row']}"
-                + ": unexpected error — the server log has the details"
+                f"Deposit block at row {block['row']}: "
+                + safe_message(e, "QB report import")
             )
 
     for btype, count in sorted(skipped_types.items()):
@@ -610,17 +605,17 @@ def import_check_report(db: Session, csv_text: str) -> dict:
             hdr = block["header"]
             chk_date = _parse_date(_cell(hdr, cols, "Date"))
             if chk_date is None:
-                raise ValueError("check row has no parseable date")
+                raise DataProblem("check row has no parseable date")
             bank_name = _cell(hdr, cols, "Account")
             bank = _find_account(db, bank_name)
             if not bank:
-                raise ValueError(f"bank account '{bank_name}' not found")
+                raise DataProblem(f"bank account '{bank_name}' not found")
             payee = _cell(hdr, cols, "Name")
             num = _cell(hdr, cols, "Num")
             memo = _cell(hdr, cols, "Memo")
             total = _q(abs(_amount(_cell(hdr, cols, "Original Amount"))))
             if total <= 0:
-                raise ValueError("check total is zero")
+                raise DataProblem("check total is zero")
 
             # Sign-aware splits: Paid Amount is negative for a normal
             # expense line and POSITIVE for a contra line — e.g. a payroll
@@ -639,14 +634,14 @@ def import_check_report(db: Session, csv_text: str) -> dict:
                 acct_name = _cell(drow, cols, "Account")
                 acct = _find_account(db, acct_name)
                 if not acct:
-                    raise ValueError(
+                    raise DataProblem(
                         f"account '{acct_name}' not found - import your "
                         "chart of accounts (IIF lists) first"
                     )
                 splits.append((acct, signed, _cell(drow, cols, "Memo")))
             split_sum = sum(a for _, a, _ in splits)
             if abs(split_sum - total) > Decimal("0.01"):
-                raise ValueError(
+                raise DataProblem(
                     f"splits ({split_sum}) do not equal the check total ({total})"
                 )
 
@@ -699,16 +694,13 @@ def import_check_report(db: Session, csv_text: str) -> dict:
             )
             sp.commit()
             result["checks"] += 1
-        except (ValueError, LookupError, InvalidOperation) as e:
-            # data problems carry our own wording — keep it for the user
+        except Exception as e:
+            # A DataProblem carries its own sentence; Python's own errors
+            # are bugs — logged with the traceback, answered generically.
             sp.rollback()
-            result["errors"].append(f"Check block at row {block['row']}: {e}")
-        except Exception:
-            sp.rollback()
-            logger.exception("QB report import row failed")
             result["errors"].append(
-                f"Check block at row {block['row']}"
-                + ": unexpected error — the server log has the details"
+                f"Check block at row {block['row']}: "
+                + safe_message(e, "QB report import")
             )
 
     for btype, count in sorted(skipped_types.items()):

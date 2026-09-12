@@ -35,7 +35,7 @@ from app.services.accounting import (
     get_ar_account_id,
     get_default_income_account_id,
 )
-from app.services.safe_errors import safe_message
+from app.services.safe_errors import DataProblem, safe_message
 
 logger = logging.getLogger(__name__)
 
@@ -789,14 +789,14 @@ def _resolve_block_class(db: Session, trns_type: str, doc_ref: str, spls: list):
     if not names:
         return None
     if len(names) > 1:
-        raise ValueError(
+        raise DataProblem(
             f"{trns_type} {doc_ref}: multiple CLASS values {sorted(names)} in one "
             f"block — classes apply per document; split the block or unify the CLASS"
         )
     name = names.pop()
     class_id = resolve_class_id(db, name)
     if class_id is None:
-        raise ValueError(
+        raise DataProblem(
             f"{trns_type} {doc_ref}: class '{name}' not found. Import your "
             f"QuickBooks class list (File > Utilities > Export > Lists > Class "
             f"List) or create it under Settings → Classes first, or correct "
@@ -817,7 +817,7 @@ def _validate_block_balance(trns_type: str, trns: dict, spls: list) -> Decimal:
     spl_total = sum((_parse_decimal(s.get("AMOUNT", "")) for s in spls), Decimal("0"))
     residual = trns_amt + spl_total
     if abs(residual) > Decimal("0.01"):
-        raise ValueError(
+        raise DataProblem(
             f"{trns_type} block does not sum to zero "
             f"(TRNS={trns_amt}, SPL total={spl_total}, residual={residual}). "
             f"Standard QB convention: TRNS and SPL amounts carry opposite signs."
@@ -845,27 +845,29 @@ def _import_bill(db: Session, trns: dict, spls: list) -> Bill:
 
     vendor_name = trns.get("NAME", "").strip()
     if not vendor_name:
-        raise ValueError("BILL: missing vendor NAME on TRNS line")
+        raise DataProblem("BILL: missing vendor NAME on TRNS line")
     vendor = db.query(Vendor).filter(Vendor.name == vendor_name).first()
     if not vendor:
-        raise ValueError(
+        raise DataProblem(
             f"BILL: vendor '{vendor_name}' not found. Add the vendor in "
             f"Vendors first, or correct the NAME in the IIF file."
         )
 
     ap_acct_name = trns.get("ACCNT", "").strip()
     if not ap_acct_name:
-        raise ValueError(f"BILL ({vendor_name}): missing AP account ACCNT on TRNS line")
+        raise DataProblem(
+            f"BILL ({vendor_name}): missing AP account ACCNT on TRNS line"
+        )
     ap_account = _find_account(db, ap_acct_name)
     if not ap_account:
-        raise ValueError(
+        raise DataProblem(
             f"BILL ({vendor_name}): AP account '{ap_acct_name}' not found. "
             f"Add the account in the chart of accounts first."
         )
 
     doc_num = trns.get("DOCNUM", "").strip()
     if not doc_num:
-        raise ValueError(
+        raise DataProblem(
             f"BILL ({vendor_name}): missing DOCNUM (bill_number is required)"
         )
 
@@ -886,10 +888,10 @@ def _import_bill(db: Session, trns: dict, spls: list) -> Bill:
     for spl in spls:
         spl_acct_name = spl.get("ACCNT", "").strip()
         if not spl_acct_name:
-            raise ValueError(f"BILL {doc_num}: SPL line missing ACCNT")
+            raise DataProblem(f"BILL {doc_num}: SPL line missing ACCNT")
         spl_acct = _find_account(db, spl_acct_name)
         if not spl_acct:
-            raise ValueError(
+            raise DataProblem(
                 f"BILL {doc_num}: expense account '{spl_acct_name}' not found"
             )
         spl_amount = _parse_decimal(spl.get("AMOUNT", ""))
@@ -984,10 +986,10 @@ def _import_deposit(db: Session, trns: dict, spls: list) -> Transaction:
 
     bank_acct_name = trns.get("ACCNT", "").strip()
     if not bank_acct_name:
-        raise ValueError("DEPOSIT: missing bank account ACCNT on TRNS line")
+        raise DataProblem("DEPOSIT: missing bank account ACCNT on TRNS line")
     bank_acct = _find_account(db, bank_acct_name)
     if not bank_acct:
-        raise ValueError(
+        raise DataProblem(
             f"DEPOSIT: bank account '{bank_acct_name}' not found. "
             f"Add the account in the chart of accounts first."
         )
@@ -1017,12 +1019,12 @@ def _import_deposit(db: Session, trns: dict, spls: list) -> Transaction:
     for spl in spls:
         spl_acct_name = spl.get("ACCNT", "").strip()
         if not spl_acct_name:
-            raise ValueError(
+            raise DataProblem(
                 f"DEPOSIT {doc_num or bank_acct_name}: SPL line missing ACCNT"
             )
         spl_acct = _find_account(db, spl_acct_name)
         if not spl_acct:
-            raise ValueError(
+            raise DataProblem(
                 f"DEPOSIT {doc_num or bank_acct_name}: source account "
                 f"'{spl_acct_name}' not found"
             )

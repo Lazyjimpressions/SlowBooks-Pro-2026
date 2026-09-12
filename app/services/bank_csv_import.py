@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.models.banking import BankTransaction
 from app.services.bank_rules_engine import apply_bank_rules
+from app.services.safe_errors import DataProblem
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ def parse_date(val: str) -> date:
         return dateparser.parse(val).date()
     except ImportError:
         pass
-    raise ValueError(f"Cannot parse date: {val}")
+    raise DataProblem(f"Cannot parse date: {val}")
 
 
 # ── Format-specific parsers ──────────────────────────────────────────────

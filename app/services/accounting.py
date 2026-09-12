@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.models.transactions import Transaction, TransactionLine
 from app.models.accounts import Account, AccountType
 from app.services import control_accounts
+from app.services.safe_errors import DataProblem
 
 CENT = Decimal("0.01")
 
@@ -167,15 +168,15 @@ def create_journal_entry(
         debit = Decimal(str(line.get("debit", 0)))
         credit = Decimal(str(line.get("credit", 0)))
         if debit < 0 or credit < 0:
-            raise ValueError(f"Line {i+1}: debit and credit must be non-negative")
+            raise DataProblem(f"Line {i+1}: debit and credit must be non-negative")
         if debit > 0 and credit > 0:
-            raise ValueError(f"Line {i+1}: a line cannot have both debit and credit")
+            raise DataProblem(f"Line {i+1}: a line cannot have both debit and credit")
 
     total_debit = sum(Decimal(str(line.get("debit", 0))) for line in lines)
     total_credit = sum(Decimal(str(line.get("credit", 0))) for line in lines)
 
     if total_debit != total_credit:
-        raise ValueError(
+        raise DataProblem(
             f"Journal entry not balanced: debits={total_debit}, credits={total_credit}"
         )
 

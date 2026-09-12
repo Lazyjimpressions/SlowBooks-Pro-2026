@@ -62,6 +62,9 @@ class MissingControlAccount(LookupError):
             "Account), then try again. Nothing was posted."
         )
         super().__init__(detail)
+        # This sentence is for the operator: safe_message passes it on
+        # rather than answering "unexpected error" for a LookupError.
+        self.user_text = detail
 
 
 # number -> (name as seeded, what the posting code uses it for)
