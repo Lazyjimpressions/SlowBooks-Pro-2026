@@ -249,11 +249,18 @@ def test_void_and_late_fee_postings_speak_the_company_words(client, seed_account
     inv = _invoice(client, cid, date="2025-01-05")
     r = client.post(f"/api/invoices/{inv['id']}/void")
     assert r.status_code == 200, r.text
-    gl = str(client.get("/api/reports/general-ledger").json())
+    gl = str(
+        client.get(
+            "/api/reports/general-ledger?start_date=2024-01-01&end_date=2030-12-31"
+        ).json()
+    )
     assert f"VOID Pledge #{inv['invoice_number']}" in gl
     assert "VOID Invoice" not in gl
 
     overdue = _invoice(client, cid, date="2025-01-05")
+    assert (
+        client.post(f"/api/invoices/{overdue['id']}/send").status_code == 200
+    )  # drafts are never charged
     r = client.put(
         "/api/settings",
         json={
@@ -265,6 +272,10 @@ def test_void_and_late_fee_postings_speak_the_company_words(client, seed_account
     assert r.status_code == 200, r.text
     r = client.post("/api/invoices/apply-late-fees")
     assert r.status_code == 200, r.text
-    gl = str(client.get("/api/reports/general-ledger").json())
+    gl = str(
+        client.get(
+            "/api/reports/general-ledger?start_date=2024-01-01&end_date=2030-12-31"
+        ).json()
+    )
     assert f"Late fee - Pledge #{overdue['invoice_number']}" in gl, gl[-600:]
     assert "Late fee - Invoice" not in gl
