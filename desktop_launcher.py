@@ -1432,10 +1432,32 @@ def raise_timer_resolution(period_ms: int = 1):
 
     Returns a function that undoes it (timeEndPeriod must be matched).
     The log line names the resolution before and after, so a gate can
-    confirm the request took effect rather than assume it. The cost is
-    a little power while serving; the request ends with the process.
+    confirm the request took effect rather than assume it.
+
+    OFF unless SLOWBOOKS_TIMER_RESOLUTION_MS is set. On the 2.13.0 gate
+    skytech put a Windows 11 box back at the true 15.625 ms default and
+    measured the UNFIXED build: median 1.8 ms, zero samples in the tick
+    band. The 2.9.3 symptom does not reproduce there, and a 1 ms timer
+    in a background process is a power cost — so it is not imposed on
+    every install for a benefit nobody has measured. Set the variable to
+    1 and the log line says whether the request took; that is the
+    instrument for anyone who does see the tick.
     """
     if sys.platform != "win32":
+        return lambda: None
+    requested = os.environ.get("SLOWBOOKS_TIMER_RESOLUTION_MS", "").strip()
+    if not requested:
+        print(
+            "timer resolution: left at the system default "
+            "(set SLOWBOOKS_TIMER_RESOLUTION_MS=1 to request 1 ms)"
+        )
+        return lambda: None
+    try:
+        period_ms = max(1, int(requested))
+    except ValueError:
+        print(
+            f"timer resolution: SLOWBOOKS_TIMER_RESOLUTION_MS={requested!r} is not a number"
+        )
         return lambda: None
     try:
         import ctypes

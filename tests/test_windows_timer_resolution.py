@@ -59,9 +59,13 @@ class _FakeNtdll:
         return 0
 
 
-def _fake_windows(monkeypatch, refuse=False):
+def _fake_windows(monkeypatch, refuse=False, env="1"):
     calls = _Calls()
     monkeypatch.setattr(dl.sys, "platform", "win32")
+    if env is None:
+        monkeypatch.delenv("SLOWBOOKS_TIMER_RESOLUTION_MS", raising=False)
+    else:
+        monkeypatch.setenv("SLOWBOOKS_TIMER_RESOLUTION_MS", env)
     monkeypatch.setattr(
         dl,
         "_win32_dlls",
@@ -126,3 +130,22 @@ def test_serve_restores_the_timer_when_uvicorn_returns(monkeypatch):
     except RuntimeError:
         pass
     assert order == ["raise", "run", "undo"]
+
+
+def test_off_by_default_and_the_log_says_how_to_turn_it_on(monkeypatch, capsys):
+    """2.13.0 gate: the 15.625 ms symptom did not reproduce on a box put
+    back at the default, so the 1 ms timer is not imposed on every install.
+    The log line still names the switch, so the instrument is findable."""
+    calls = _fake_windows(monkeypatch, env=None)
+    dl.raise_timer_resolution()()
+    assert calls.log == []
+    out = capsys.readouterr().out
+    assert (
+        "left at the system default" in out and "SLOWBOOKS_TIMER_RESOLUTION_MS=1" in out
+    )
+
+
+def test_a_non_number_is_named_not_swallowed(monkeypatch, capsys):
+    calls = _fake_windows(monkeypatch, env="fast")
+    dl.raise_timer_resolution()()
+    assert calls.log == [] and "'fast' is not a number" in capsys.readouterr().out

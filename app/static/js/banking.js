@@ -699,7 +699,7 @@ const BankingPage = {
         openModal('Import Bank File', `
             <form onsubmit="BankingPage.previewOFX(event, ${feedId}, ${accountId})">
                 <div class="form-group">
-                    <label>Select an OFX/QFX file, or a CSV export (Chase checking, Chase credit, PayPal)</label>
+                    <label>Select an OFX/QFX file, or a CSV export (Bank of America, Chase checking, Chase credit, PayPal)</label>
                     <input type="file" name="file" accept=".ofx,.qfx,.csv" required id="ofx-file">
                 </div>
                 <div class="form-actions">
@@ -721,6 +721,13 @@ const BankingPage = {
         const isCsv = BankingPage._isCsvFile(file);
         const formData = new FormData();
         formData.append('file', file);
+        // The pane stayed empty for the whole round trip and the button
+        // stayed live, so a second click put a second parse in flight
+        // (2.13.0 gate, owner + skytech). Say something first, and take
+        // the button away until the answer is back.
+        const submit = e.target.querySelector('button[type="submit"]');
+        if (submit) submit.disabled = true;
+        $('#ofx-preview').innerHTML = '<p class="form-hint">Reading the file — this can take a moment for a year of statement lines.</p>';
         try {
             const endpoint = isCsv ? '/api/bank-import/preview-csv' : '/api/bank-import/preview';
             const resp = await fetch(endpoint, { method: 'POST', body: formData });
@@ -748,10 +755,15 @@ const BankingPage = {
                 </div>`;
         } catch (err) {
             $('#ofx-preview').innerHTML = `<div style="color:var(--danger); font-size:11px;">${escapeHtml(err.message)}</div>`;
+        } finally {
+            if (submit) submit.disabled = false;
         }
     },
 
     async confirmOFXImport(feedId, accountId) {
+        // Same guard on the import itself: one click, one import.
+        const importBtn = document.activeElement && document.activeElement.tagName === 'BUTTON' ? document.activeElement : null;
+        if (importBtn) { importBtn.disabled = true; importBtn.textContent = 'Importing…'; }
         try {
             const file = $('#ofx-file').files[0];
             const isCsv = BankingPage._isCsvFile(file);

@@ -48,13 +48,27 @@ the installer's name out of the packaging script rather than from memory. Not
 covered anywhere: the end-to-end on a machine with the runtime genuinely
 absent, which needs a scratch machine. Recorded as such rather than claimed.
 
-**On Windows, the server no longer waits a scheduler tick per request.** About
-half of all requests waited exactly 15.625 ms — a trivial health check cost
-the same as a full invoice write. The server process now asks for a 1 ms timer
-while it serves, and first tells Windows 11 not to ignore that request from a
-process with no window, which the server is. It logs the timer resolution
-before and after so the change can be confirmed on real hardware rather than
-assumed. Measured on the Windows lane of the release gate, not here.
+**A 1 ms timer for the Windows server, available and off.** Issue #107 measured
+about half of all requests waiting exactly one 15.625 ms scheduler tick on
+2.9.3. The server can now ask Windows for a 1 ms timer while it serves — and
+first tell Windows 11 not to ignore that request from a process with no
+window, which the server is — logging the resolution before and after. It is
+**off unless `SLOWBOOKS_TIMER_RESOLUTION_MS` is set**, because the gate put a
+Windows 11 box back at the true default and measured the unfixed build: a
+median under 2 ms and not one sample in the tick band. The symptom does not
+reproduce there, and a permanent 1 ms timer in a background process costs
+power, so it is not imposed on every install for a benefit nobody has
+measured. The switch and the log line are the instrument for anyone who does
+see the tick.
+
+**The bank-import dialog says it is working, and names Bank of America.** The
+preview pane stayed empty for the whole round trip and the button stayed live,
+so a second click put a second parse in flight; found by the owner on a
+382-byte file. It shows *Reading the file…* first and takes the button away
+until the answer is back, and the import button does the same. The file
+picker's own label listed Chase and PayPal and not Bank of America — the one
+place a user is actually choosing a file described a different product than
+the one shipped.
 
 **The test suite builds its database once.** Every test used to build its own
 engine and schema; now the schema exists once and each test runs in a
