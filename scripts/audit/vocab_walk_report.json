@@ -1,0 +1,2542 @@
+[
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[2].name",
+  "text": "Accounts Receivable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:176",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[2].control_purpose",
+  "text": "what customers owe \u2014 every invoice and payment",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/control_accounts.py:76",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[12].control_purpose",
+  "text": "sales tax collected on invoices and receipts",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/control_accounts.py:81",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[14].name",
+  "text": "Federal Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:53",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[15].name",
+  "text": "State Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:58",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[25].name",
+  "text": "Owner's Equity",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:95",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[28].name",
+  "text": "Opening Balance Equity",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/schemas/banking.py:14",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[29].name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[29].control_purpose",
+  "text": "the default income account for invoice lines",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/control_accounts.py:86",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[31].name",
+  "text": "Material Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:101",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[32].name",
+  "text": "Labor Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:102",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[34].name",
+  "text": "Other Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:108",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[42].control_purpose",
+  "text": "employer taxes posted by job costing",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/control_accounts.py:91",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/accounts",
+  "kind": "json",
+  "where": "200 $[45].control_purpose",
+  "text": "benefit costs posted by job costing",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/control_accounts.py:92",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/analytics/ai-actions",
+  "kind": "json",
+  "where": "200 $.groups[0].category",
+  "text": "Customers & Sales",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/ai_actions.py:186",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/analytics/ai-actions",
+  "kind": "json",
+  "where": "200 $.groups[0].actions[0].label",
+  "text": "Top customers by revenue",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/ai_actions.py:185",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/analytics/ai-actions",
+  "kind": "json",
+  "where": "200 $.groups[0].actions[1].label",
+  "text": "Unpaid invoices summary",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/ai_actions.py:193",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/analytics/ai-actions",
+  "kind": "json",
+  "where": "200 $.groups[0].actions[2].label",
+  "text": "A/R aging",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/ai_actions.py:201",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/analytics/ai-actions",
+  "kind": "json",
+  "where": "200 $.groups[3].actions[0].label",
+  "text": "P&L analysis",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/ai_actions.py:252",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/analytics/export.pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "No paid invoices this period.                                    No paid bills this period.",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/analytics/export.pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "PLEDGES RECEIVABLE AGING",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/customers/{customer_id}  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Customer not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:88",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/dashboard/widgets",
+  "kind": "json",
+  "where": "200 $.widgets[0].title",
+  "text": "Pledges Receivable",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/dashboard/widgets",
+  "kind": "json",
+  "where": "200 $.widgets[5].description",
+  "text": "Pledges Receivable by age bucket",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/invoices/{invoice_id}  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Invoice not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:235",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/invoices/{invoice_id}/pdf  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Invoice not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:235",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/invoices/{invoice_id}/print-preview  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Invoice not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:235",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/job-costs/{jc_id}  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Job cost entry not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/job_costing.py:304",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/profitability",
+  "kind": "json",
+  "where": "200 $[0].job_name",
+  "text": "No job",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/job_costing.py:436",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Job not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/job_costing.py:345",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/budgets  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Job not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/job_costing.py:345",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/cost-tree",
+  "kind": "json",
+  "where": "200 $.types[0].codes[0].lines[0].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/cost-tree",
+  "kind": "json",
+  "where": "200 $.types[0].codes[1].lines[1].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/cost-tree",
+  "kind": "json",
+  "where": "200 $.types[1].codes[0].lines[0].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/cost-tree",
+  "kind": "json",
+  "where": "200 $.types[1].codes[1].lines[0].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/cost-tree",
+  "kind": "json",
+  "where": "200 $.types[2].codes[1].lines[0].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/cost-tree",
+  "kind": "json",
+  "where": "200 $.types[2].codes[1].lines[1].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/cost-tree  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Job not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/job_costing.py:345",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/transactions",
+  "kind": "json",
+  "where": "200 $[1].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/transactions",
+  "kind": "json",
+  "where": "200 $[2].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/transactions",
+  "kind": "json",
+  "where": "200 $[3].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/transactions",
+  "kind": "json",
+  "where": "200 $[5].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/transactions",
+  "kind": "json",
+  "where": "200 $[8].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/transactions",
+  "kind": "json",
+  "where": "200 $[10].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/jobs/{job_id}/transactions  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Job not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/job_costing.py:345",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/opening-balances/status",
+  "kind": "json",
+  "where": "200 $.accounts[2].name",
+  "text": "Accounts Receivable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:176",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/opening-balances/status",
+  "kind": "json",
+  "where": "200 $.accounts[10].name",
+  "text": "Owner's Equity",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:95",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/opening-balances/status",
+  "kind": "json",
+  "where": "200 $.accounts[13].name",
+  "text": "Opening Balance Equity",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/schemas/banking.py:14",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/opening-balances/status",
+  "kind": "json",
+  "where": "200 $.accounts[18].name",
+  "text": "Federal Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:53",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/opening-balances/status",
+  "kind": "json",
+  "where": "200 $.accounts[19].name",
+  "text": "State Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:58",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payments/payment-link/{invoice_id}  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Invoice not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:235",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[0].summary",
+  "text": "No wage income tax",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/table_engine.py:171",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[1].source",
+  "text": "Alabama Withholding Tax Tables and Instructions; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:353",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[1].notes",
+  "text": "Standard deduction phases down with income; the maximum is used.",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:354",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[2].source",
+  "text": "Arkansas Withholding Tax Formula Method (2026 std deduction $2,470); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:366",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[3].source",
+  "text": "Arizona Form A-4; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[3].notes",
+  "text": "Employee elects a rate on Form A-4 (0.5%\u20133.5%); 2.0% is the default when none is on file. Set employee.state_rate_override. The 2.5% flat income tax is what the election approximates.",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:167",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[5].source",
+  "text": "Colorado DR 1098 / DR 0004; FAMLI 0.88% for 2026 split 50/50 (famli.colorado.gov); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state relea",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:181",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[6].source",
+  "text": "Connecticut Circular CT; CT Paid Leave 0.5% (ctpaidleave.org); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:408",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[7].source",
+  "text": "DC OTR withholding instructions (FR-230); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:477",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[8].source",
+  "text": "Delaware Withholding Tax Tables; Paid Leave 0.8% (employer may pass up to half to employees); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of ",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:442",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[9].summary",
+  "text": "No wage income tax",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/table_engine.py:171",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[11].source",
+  "text": "Hawaii Booklet A; TDI 0.5% of weekly wages, max $7.50/week in 2026 (DLIR); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as o",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:522",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[12].source",
+  "text": "Iowa Withholding Formula (3.8% flat); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:246",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[13].source",
+  "text": "Idaho Table for Percentage Computation Method; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:208",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[15].notes",
+  "text": "County income tax (0.5%\u20133%) is required: set employee.local_tax_rate to the county rate.",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:234",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[16].source",
+  "text": "Kansas Withholding Tax Guide (KW-100); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:537",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[18].source",
+  "text": "Louisiana R-1300 (3% flat); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[19].notes",
+  "text": "4% surtax on income over $1M is not withheld here. Employers under 25 employees owe no employer PFML share (0.46% total).",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:285",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[20].source",
+  "text": "Maryland Employer Withholding Guide (2026: new 6.25% / 6.5% brackets, std deduction $3,350/$6,700); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep cha",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:592",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[22].source",
+  "text": "Michigan Income Tax Withholding Guide (2026 exemption $5,900); 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:297",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[22].notes",
+  "text": "Cities with an income tax (Detroit, Grand Rapids\u2026) \u2014 use employee.local_tax_rate.",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:298",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[23].source",
+  "text": "Minnesota Income Tax Withholding Instruction Booklet; Paid Leave 0.88% from 2026-01-01 split 50/50 (pl.mn.gov); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:612",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[24].source",
+  "text": "Missouri Employer's Tax Guide (Form MO-W-4); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:660",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[25].source",
+  "text": "Mississippi Withholding Tax Tables (2026: 4.0%, stepping toward 3% by 2030); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:627",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[26].source",
+  "text": "Montana Withholding Tax Guide (2026: 5.65% top rate above $47,500; 5.4% in 2027); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releas",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:676",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[28].source",
+  "text": "North Dakota Income Tax Withholding Rates and Instructions; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:794",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[29].source",
+  "text": "Nebraska Circular EN (2026: 4.55% top rate, 3.99% by 2027); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02) (",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:692",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[30].summary",
+  "text": "No wage income tax",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/table_engine.py:171",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[32].source",
+  "text": "New Mexico FYI-104; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[33].summary",
+  "text": "No wage income tax",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/table_engine.py:171",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[35].source",
+  "text": "Ohio Employer Withholding Tables (2026: flat 2.75% above $26,050); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-0",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:806",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[35].notes",
+  "text": "Municipal income tax (RITA / CCA cities) and school district tax \u2014 use employee.local_tax_rate.",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:807",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[36].source",
+  "text": "Oklahoma Income Tax Withholding Tables (2026: brackets collapsed to three, 4.5% top); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state re",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:823",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[39].source",
+  "text": "Rhode Island Withholding Tax Booklet; RI DLT 2026: TDI 1.1% on $100,000, UI base $30,800; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:839",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[39].notes",
+  "text": "Brackets are the same for every filing status. Deduction/exemption phase out at high income; full amounts used.",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:840",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[40].source",
+  "text": "South Carolina Withholding Tax Tables (WH-1603F); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:855",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[41].summary",
+  "text": "No wage income tax",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/table_engine.py:171",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[42].summary",
+  "text": "No wage income tax",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/table_engine.py:171",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[43].summary",
+  "text": "No wage income tax",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/table_engine.py:171",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[45].source",
+  "text": "Virginia Employer Withholding Instructions (2026 std deduction $8,750/$17,500); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:889",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[46].source",
+  "text": "Vermont Income Tax Withholding Instructions; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:873",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[47].summary",
+  "text": "No income tax; PFML, WA Cares, L&I \u2014 dedicated engine",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:942",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[48].source",
+  "text": "Wisconsin Publication W-166 (2026 std deduction $13,960/$25,840); Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:921",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[48].notes",
+  "text": "Standard deduction phases out with income; the maximum is used.",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:922",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/payroll/states",
+  "kind": "json",
+  "where": "200 $[49].source",
+  "text": "West Virginia Employer's Withholding Tax Tables; Tax Foundation, 2026 State Individual Income Tax Rates and Brackets; 2026 SUI wage bases (Nextep chart of state releases as of 2026-01-02)",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/services/state_tax/tables.py:904",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/recurring/{rec_id}  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Recurring invoice not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/recurring.py:39",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet",
+  "kind": "json",
+  "where": "200 $.assets[1].account_name",
+  "text": "Accounts Receivable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:176",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet",
+  "kind": "json",
+  "where": "200 $.liabilities[2].account_name",
+  "text": "Federal Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:53",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet",
+  "kind": "json",
+  "where": "200 $.liabilities[3].account_name",
+  "text": "State Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:58",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet",
+  "kind": "json",
+  "where": "200 $.equity[0].account_name",
+  "text": "Opening Balance Equity",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/schemas/banking.py:14",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Accounts Receivable                                                               $16,733.73",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Federal Income Tax Payable                                                        $29,879.82",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "State Income Tax Payable                                                            $6,564.99",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/balance-sheet/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Opening Balance Equity                                                            $42,500.00",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/cash-flow",
+  "kind": "json",
+  "where": "200 $.financing[0].account_name",
+  "text": "Federal Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:53",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/cash-flow",
+  "kind": "json",
+  "where": "200 $.financing[1].account_name",
+  "text": "State Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:58",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/customer-statement/{customer_id}/pdf  [404 path]",
+  "kind": "json",
+  "where": "404 $.detail",
+  "text": "Customer not found",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:88",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Service Income                                                 $17,370.00                       $0.00       $17,370.00",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Accounts Receivable                                                               $16,733.73",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Federal Income Tax Payable                                                        $29,879.82",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "State Income Tax Payable                                                            $6,564.99",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Opening Balance Equity                                                            $42,500.00",
+  "class": "sentence",
+  "unchanged_from_business": false,
+  "source": null,
+  "verdict": "changed"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "1100 Accounts Receivable                                                     $35,280.36             $29,020.57",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "2310 Federal Income Tax Payable                                                   $0.00             $10,452.17",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "2320 State Income Tax Payable                                                     $0.00               $2,292.72",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/financial-statements/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "4000 Service Income                                                               $0.00             $17,370.00",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].account_name",
+  "text": "Accounts Receivable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:176",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[0].description",
+  "text": "Invoice #1081 - Boise Neon Supply",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[1].description",
+  "text": "Invoice #1082 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[2].description",
+  "text": "Invoice #1083 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[5].description",
+  "text": "Invoice #1085 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[7].description",
+  "text": "Invoice #1084 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[11].description",
+  "text": "Invoice #1089 - Willamette Retail Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[13].description",
+  "text": "Invoice #1090 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[15].description",
+  "text": "Invoice #1088 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[17].description",
+  "text": "Invoice #1086 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[18].description",
+  "text": "Invoice #1087 - Kootenai Auto Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[19].description",
+  "text": "Invoice #1092 - Tri-Cities Signs LLC",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[21].description",
+  "text": "Invoice #1093 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[25].description",
+  "text": "Invoice #1095 - Rose City Diner",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[27].description",
+  "text": "Invoice #1091 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[28].description",
+  "text": "Invoice #1094 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[31].description",
+  "text": "Invoice #1096 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[32].description",
+  "text": "Invoice #1097 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[33].description",
+  "text": "Invoice #1098 - Garland Theater",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[35].description",
+  "text": "Invoice #1100 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[37].description",
+  "text": "Invoice #1099 - Rose City Diner",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[40].description",
+  "text": "Invoice #1104 - Willamette Retail Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[42].description",
+  "text": "Invoice #1101 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[43].description",
+  "text": "Invoice #1105 - Silver Valley Casino",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[45].description",
+  "text": "Invoice #1102 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[47].description",
+  "text": "Invoice #1103 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[1].entries[49].description",
+  "text": "Invoice #1110 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[0].description",
+  "text": "Invoice #1082 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[1].description",
+  "text": "Invoice #1083 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[2].description",
+  "text": "Invoice #1085 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[3].description",
+  "text": "Invoice #1084 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[4].description",
+  "text": "Invoice #1090 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[5].description",
+  "text": "Invoice #1088 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[6].description",
+  "text": "Invoice #1086 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[7].description",
+  "text": "Invoice #1087 - Kootenai Auto Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[8].description",
+  "text": "Invoice #1091 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[9].description",
+  "text": "Invoice #1094 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[10].description",
+  "text": "Invoice #1097 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[11].description",
+  "text": "Invoice #1098 - Garland Theater",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[12].description",
+  "text": "Invoice #1101 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[13].description",
+  "text": "Invoice #1105 - Silver Valley Casino",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[14].description",
+  "text": "Invoice #1110 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[15].description",
+  "text": "Invoice #1109 - Kootenai Auto Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[16].description",
+  "text": "Invoice #1107 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[17].description",
+  "text": "Invoice #1113 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[18].description",
+  "text": "Invoice #1114 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[19].description",
+  "text": "Invoice #1116 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[20].description",
+  "text": "Invoice #1118 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[5].entries[21].description",
+  "text": "Invoice #1117 - Garland Theater",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[6].account_name",
+  "text": "Federal Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:53",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[7].account_name",
+  "text": "State Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:58",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[0].description",
+  "text": "Invoice #1081 - Boise Neon Supply",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[1].description",
+  "text": "Invoice #1081 - Boise Neon Supply",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[2].description",
+  "text": "Invoice #1081 - Boise Neon Supply",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[3].description",
+  "text": "Invoice #1082 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[4].description",
+  "text": "Invoice #1082 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[5].description",
+  "text": "Invoice #1082 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[6].description",
+  "text": "Invoice #1086 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[7].description",
+  "text": "Invoice #1096 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[8].description",
+  "text": "Invoice #1096 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[9].description",
+  "text": "Invoice #1097 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[10].description",
+  "text": "Invoice #1101 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[11].description",
+  "text": "Invoice #1101 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[12].description",
+  "text": "Invoice #1102 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[13].description",
+  "text": "Invoice #1102 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[14].description",
+  "text": "Invoice #1106 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[15].description",
+  "text": "Invoice #1107 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[16].description",
+  "text": "Invoice #1112 - Deschutes Outfitters",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[17].description",
+  "text": "Invoice #1111 - Tri-Cities Signs LLC",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[18].description",
+  "text": "Invoice #1111 - Tri-Cities Signs LLC",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[19].description",
+  "text": "Invoice #1116 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[20].description",
+  "text": "Invoice #1116 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[21].description",
+  "text": "Invoice #1117 - Garland Theater",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[13].entries[22].description",
+  "text": "Invoice #1117 - Garland Theater",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[0].description",
+  "text": "Invoice #1081 - Boise Neon Supply",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[1].description",
+  "text": "Invoice #1082 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[2].description",
+  "text": "Invoice #1083 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[3].description",
+  "text": "Invoice #1085 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[4].description",
+  "text": "Invoice #1084 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[5].description",
+  "text": "Invoice #1089 - Willamette Retail Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[6].description",
+  "text": "Invoice #1090 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[7].description",
+  "text": "Invoice #1088 - Riverfront Arcade",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[8].description",
+  "text": "Invoice #1086 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[9].description",
+  "text": "Invoice #1087 - Kootenai Auto Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[10].description",
+  "text": "Invoice #1087 - Kootenai Auto Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[11].description",
+  "text": "Invoice #1087 - Kootenai Auto Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[12].description",
+  "text": "Invoice #1092 - Tri-Cities Signs LLC",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[13].description",
+  "text": "Invoice #1092 - Tri-Cities Signs LLC",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[14].description",
+  "text": "Invoice #1093 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[15].description",
+  "text": "Invoice #1095 - Rose City Diner",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[16].description",
+  "text": "Invoice #1091 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[17].description",
+  "text": "Invoice #1094 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[18].description",
+  "text": "Invoice #1097 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[19].description",
+  "text": "Invoice #1098 - Garland Theater",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[20].description",
+  "text": "Invoice #1100 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[21].description",
+  "text": "Invoice #1099 - Rose City Diner",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[22].description",
+  "text": "Invoice #1104 - Willamette Retail Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[23].description",
+  "text": "Invoice #1101 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[24].description",
+  "text": "Invoice #1105 - Silver Valley Casino",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[25].description",
+  "text": "Invoice #1103 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[26].description",
+  "text": "Invoice #1110 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[27].description",
+  "text": "Invoice #1106 - Cascade Signworks",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[28].description",
+  "text": "Invoice #1109 - Kootenai Auto Group",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[29].description",
+  "text": "Invoice #1107 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[30].description",
+  "text": "Invoice #1107 - Palouse Brewing Co",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[31].description",
+  "text": "Invoice #1108 - Boise Neon Supply",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[32].description",
+  "text": "Invoice #1113 - Sandpoint Marina",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[33].description",
+  "text": "Invoice #1115 - Deschutes Outfitters",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[34].description",
+  "text": "Invoice #1114 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[35].description",
+  "text": "Invoice #1111 - Tri-Cities Signs LLC",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[36].description",
+  "text": "Invoice #1111 - Tri-Cities Signs LLC",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[37].description",
+  "text": "Invoice #1120 - Rose City Diner",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[38].description",
+  "text": "Invoice #1116 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[39].description",
+  "text": "Invoice #1116 - Lilac City Barbers",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[40].description",
+  "text": "Invoice #1118 - Northtown Mall Mgmt",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[41].description",
+  "text": "Invoice #1117 - Garland Theater",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/general-ledger",
+  "kind": "json",
+  "where": "200 $.accounts[14].entries[42].description",
+  "text": "Invoice #1119 - Boise Neon Supply",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/job-profitability",
+  "kind": "json",
+  "where": "200 $.jobs[0].job_name",
+  "text": "No job",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/job_costing.py:436",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/pledges/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "DONOR / PLEDGE       PLEDGED   INVOICED          NOT YET INVOICED            RECEIVED   WRITTEN OFF          OUTSTANDING",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/profit-loss",
+  "kind": "json",
+  "where": "200 $.income[0].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/profit-loss/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Service Income                                                          $17,370.00",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/statement-of-activities",
+  "kind": "json",
+  "where": "200 $.revenue[0].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/statement-of-activities/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Service Income                                                 $17,370.00                       $0.00       $17,370.00",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position",
+  "kind": "json",
+  "where": "200 $.assets[1].account_name",
+  "text": "Accounts Receivable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:176",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position",
+  "kind": "json",
+  "where": "200 $.liabilities[2].account_name",
+  "text": "Federal Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:53",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position",
+  "kind": "json",
+  "where": "200 $.liabilities[3].account_name",
+  "text": "State Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:58",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position",
+  "kind": "json",
+  "where": "200 $.net_assets[0].account_name",
+  "text": "Opening Balance Equity",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/schemas/banking.py:14",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Accounts Receivable                                                               $16,733.73",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Federal Income Tax Payable                                                        $29,879.82",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "State Income Tax Payable                                                            $6,564.99",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/statement-of-financial-position/pdf",
+  "kind": "pdf",
+  "where": "200",
+  "text": "Opening Balance Equity                                                            $42,500.00",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": null,
+  "verdict": "data or dynamic"
+ },
+ {
+  "route": "GET /api/reports/trial-balance",
+  "kind": "json",
+  "where": "200 $.items[1].account_name",
+  "text": "Accounts Receivable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/routes/credit_memos.py:176",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/trial-balance",
+  "kind": "json",
+  "where": "200 $.items[6].account_name",
+  "text": "Federal Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:53",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/trial-balance",
+  "kind": "json",
+  "where": "200 $.items[7].account_name",
+  "text": "State Income Tax Payable",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:58",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/reports/trial-balance",
+  "kind": "json",
+  "where": "200 $.items[13].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ },
+ {
+  "route": "GET /api/tax/schedule-c",
+  "kind": "json",
+  "where": "200 $.lines[0].accounts[0].account_name",
+  "text": "Service Income",
+  "class": "sentence",
+  "unchanged_from_business": true,
+  "source": "app/seed/chart_of_accounts.py:99",
+  "verdict": "CODE LEAK"
+ }
+]
