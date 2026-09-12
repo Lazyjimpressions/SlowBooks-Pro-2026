@@ -18,9 +18,12 @@ requests.
 
 ## Non-negotiable rules
 
-- Keep `main` based on and deliberately reconciled with `upstream/main`; it may
-  remain ahead with reviewed fork commits. Develop on feature branches and
-  never discard fork work merely to make the refs identical.
+- Keep `origin/main` as a clean mirror of `upstream/main` after the documented
+  one-time realignment. Do not merge fork-only application or operating-policy
+  commits into it. Preserve prior fork work through archive tags and branches.
+- Start every product contribution from current `upstream/main`, keep it small,
+  and send it upstream before beginning dependent work. When upstream merges
+  it, synchronize `origin/main` and retire the contribution branch.
 - Preserve upstream compatibility and keep changes small enough to propose
   upstream unless a decision record explicitly marks them private-specific.
 - Never commit real company databases, bank exports, customer/vendor data,
@@ -50,5 +53,6 @@ suite. Update `docs/agent/CURRENT_STATE.md` only with verified facts. Record a
 material architecture decision in `docs/agent/decisions/` and link the GitHub
 issue in the pull request.
 
-Local private notes belong in `AGENTS.local.md` or `private-data/`; both are
-ignored and must never carry canonical project knowledge.
+Canonical LazyJimpressions operating policy belongs in the private
+`slowbooks-ai-ops` repository. A locally installed `AGENTS.local.md` may point
+agents there, but ignored files must not be the only copy of durable knowledge.

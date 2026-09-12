@@ -1,20 +1,24 @@
 # Current verified state
 
-**Verified:** 2026-09-10
+**Verified:** 2026-09-12
 **Upstream source:** `VonHoltenCodes/SlowBooks-Pro-2026`  
 **Fork:** `Lazyjimpressions/SlowBooks-Pro-2026`  
 **Fork baseline:** upstream v2.9.4 plus completed fork banking Phases 1-6
-**Current upstream:** v2.10.3 (`d2ae5ed`)
+**Current upstream:** v2.12.1 (`117fa65`); v2.13.0 release branch is in gate
 
 ## Repository model
 
 - The public fork carries sanitized, generally useful source changes and PRs.
 - The private `Lazyjimpressions/slowbooks-ai-ops` repository carries internal
   AI policy, business mappings, research, and deployment knowledge.
-- Local `main` is the fork integration branch and is configured to track
-  `upstream/main` so upstream drift stays visible. At this audit it matches
-  `origin/main` but has intentionally diverged from upstream: 34 commits ahead
-  and 38 behind. Feature branches push to `origin`.
+- The accepted target is a clean-mirror fork: `origin/main` will match
+  `upstream/main`, while focused contribution branches push to `origin` and
+  open pull requests against upstream. The one-time realignment has not yet
+  occurred; current fork `main` remains the archived v2.9.4 prototype plus
+  transition documentation.
+- LazyJimpressions-specific operating policy, AI research, and durable agent
+  context live in the private `slowbooks-ai-ops` repository rather than as a
+  permanent delta on the public fork's `main`.
 
 ## Banking observations
 
@@ -54,10 +58,11 @@ lightly populated internal test company, the chosen transition is a fresh
 upstream database and controlled re-import rather than a permanent compatibility
 migration for the duplicate revision `e7f8a9b0c1d2`.
 
-Upstream PR #130 proposes the generic Bank of America detail CSV parser. A
-follow-up commit adds a synthetic fixture derived from two real exports,
-preserves CRLF, and covers signed amounts, a thousands separator, and a quoted
-comma description. The maintainer plans to gate it after v2.11.0.
+Upstream PR #130 remains open as the contribution record. The maintainer
+validated the real-shape fixture and copied both LazyJimpressions commits, with
+authorship preserved, to `release/2.13.0` as `fa3f5a7` and `dcd3a3f`. That
+release branch contains the Bank of America importer and is undergoing the
+normal release gate; it is not yet the basis for a new local company.
 
 ## Verification status
 
@@ -98,7 +103,7 @@ comma description. The maintainer plans to gate it after v2.11.0.
 
 ## Open work
 
-- Integrate upstream v2.10.3 according to
+- Complete the clean-mirror realignment and upstream contribution workflow in
   `docs/implementation/IMPL_UPSTREAM_210_INTEGRATION.md`.
 - Issue #4: reconcile OFX/QFX statement balance metadata and opening balances.
 - Issue #5: filter Schedule C reporting by business class.

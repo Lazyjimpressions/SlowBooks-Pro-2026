@@ -1,6 +1,16 @@
 # AI-first banking roadmap
 
-## Immediate priority: upstream 2.10 integration
+## Immediate priority: upstream co-development and clean baseline
+
+- Realign public-fork `main` to a clean mirror of upstream after verifying the
+  archive tags and rollback reference.
+- Work one focused contribution at a time from current upstream, send it
+  upstream early, and consume the maintainer's accepted implementation before
+  starting dependent work.
+- Keep canonical LazyJimpressions operating policy and AI research in the
+  private operations repository so public `main` can remain synchronized.
+- Track the Bank of America importer through the v2.13.0 release gate; our two
+  commits are already present on that release branch with authorship preserved.
 
 - Adopt upstream's ledger-backed bank/card register, feed matching, transfers,
   voids, reconciliation, and control-account protections.
@@ -13,7 +23,8 @@
   and posting implementations.
 
 See [the phased integration plan](../implementation/IMPL_UPSTREAM_210_INTEGRATION.md)
-and [ADR 0004](decisions/0004-adopt-upstream-ledger-banking.md).
+[ADR 0004](decisions/0004-adopt-upstream-ledger-banking.md), and
+[ADR 0005](decisions/0005-clean-mirror-contribution-model.md).
 
 ## Foundation
 

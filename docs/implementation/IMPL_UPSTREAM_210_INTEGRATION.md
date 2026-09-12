@@ -1,8 +1,8 @@
 # Implementation Plan: Upstream 2.10 Banking Integration
 
-**Version:** 1.1
-**Last Updated:** September 10, 2026  
-**Status:** Phase 0 transition decision complete; awaiting stable upstream release
+**Version:** 1.2
+**Last Updated:** September 12, 2026
+**Status:** Phase 0 complete; clean-mirror transition ready for review
 
 **References:**
 
@@ -12,6 +12,7 @@
 - [ADR 0001: Upstream-first public fork](../agent/decisions/0001-upstream-first-fork.md)
 - [ADR 0003: Bank review classification](../agent/decisions/0003-bank-review-classification.md)
 - [ADR 0004: Adopt upstream ledger banking](../agent/decisions/0004-adopt-upstream-ledger-banking.md)
+- [ADR 0005: Clean mirror contributions](../agent/decisions/0005-clean-mirror-contribution-model.md)
 - [Completed bank-review plan](IMPL_BANK_REVIEW_CLASSIFICATION.md)
 
 ---
@@ -31,11 +32,11 @@ solely for that experimental database.
 
 ## Verified baseline
 
-Audit date: September 10, 2026.
+Audit refreshed: September 12, 2026.
 
 - Fork `main`: `f40447a`, based on upstream v2.9.4 plus completed banking
   Phases 1-6.
-- Upstream `main`: `d2ae5ed`, tagged v2.10.3.
+- Upstream `main`: `117fa65`, tagged v2.12.1.
 - Common ancestor: upstream v2.9.4 (`0cb9188`).
 - Upstream changed 112 files since the common ancestor; the fork changed 71;
   22 paths overlap.
@@ -44,8 +45,9 @@ Audit date: September 10, 2026.
   release maintenance.
 - Upstream does not contain the fork's proposal, deterministic classification,
   generic transaction-counterparty, or expanded rule capabilities.
-- Bank of America detail CSV support remains a focused upstream contribution in
-  upstream PR #130.
+- Bank of America detail CSV support remains represented by upstream PR #130;
+  both LazyJimpressions commits are on `release/2.13.0` with authorship
+  preserved while that release is gated.
 - Tag `lji-v2.9.4-ai-banking-final` preserves the pre-transition fork baseline.
 - PR #130 follow-up commit `b50eaba` adds a CRLF fixture derived from two real
   exports while containing only synthetic values and descriptions.
@@ -149,25 +151,30 @@ may propose decisions; deterministic services validate and execute them.
 **Exit criteria:** completed. The prior implementation is recoverable and the
 new baseline does not inherit its colliding migration history.
 
-## Phase 1 — Establish the clean upstream baseline ⬜
+## Phase 1 — Establish the clean upstream collaboration baseline ⬜
 
-- [ ] Wait for a stable upstream release after v2.11.0 that includes gated Bank
-  of America CSV support, unless the maintainer identifies a different release.
-- [ ] Create the integration branch directly from that stable upstream tag.
-- [ ] Run the upstream test, migration, lint, dependency, Docker, and packaging
-  gates before adding fork code.
-- [ ] Restore only the minimum cross-agent and public-repository security
-  controls needed locally; keep private operations documentation out of the
-  public fork.
-- [ ] Review the baseline as a deliberate fork-main transition. Do not merge the
-  archived application tree forward.
-- [ ] Promote the validated baseline to fork `main` only after its archive tag
-  and rollback instructions are verified.
+- [ ] Verify archive tags for both the completed application prototype and the
+  final pre-realignment documentation state.
+- [ ] Make the private operations repository the canonical home for our
+  collaboration model, agent instructions, and AI roadmap.
+- [ ] Realign public-fork `main` to current `upstream/main` using a reviewed,
+  lease-protected transition; do not merge the archived application tree.
+- [ ] Configure local and fork `main` to fast-forward from upstream and verify
+  that both refs resolve to the same commit.
+- [ ] Branch every contribution directly from current `upstream/main`; keep one
+  independently mergeable change per upstream PR.
+- [ ] Verify the clean mirror with upstream's proportionate test and security
+  gates before beginning another feature.
 
-**Exit criteria:** fork `main` is based on a stable upstream release, contains no
-old fork migration chain, and passes upstream's own release-level checks.
+**Exit criteria:** fork `main` mirrors upstream, the old implementation remains
+recoverable by tag, and a documented contribution can travel from an origin
+branch through upstream review and back into the synchronized mirror.
 
-## Phase 2 — Validate a fresh upstream company ⬜
+## Phase 2 — Validate a fresh upstream company after BoA release ⬜
+
+- [ ] Wait for the stable upstream release containing the gated Bank of America
+  importer. Repository synchronization does not wait on this data-migration
+  gate, but company reconstruction does.
 
 - [ ] Take a final out-of-repository snapshot of the old test database and mark
   it read-only.
@@ -261,9 +268,9 @@ accounting regressions harder to isolate.
 
 ## Resuming this plan
 
-Resume at Phase 1 after upstream publishes the stable release containing the BoA
-importer. Create the working branch from that release tag, prove the untouched
-upstream baseline, and prepare the private re-import manifest. Do not resolve the
-22 old overlapping files or port the old migration chain. After the clean
-company reconciles, adapt one vertical slice: import -> proposal -> approval ->
+Resume at Phase 1 by completing the separately reviewed clean-mirror
+realignment; this no longer waits for a BoA release. Continue contributing on
+small branches from current upstream. When the stable BoA release ships, begin
+Phase 2 from that tag, prove the untouched upstream company and re-import
+baseline, and then adapt one vertical slice: import -> proposal -> approval ->
 upstream add -> ledger-line link.

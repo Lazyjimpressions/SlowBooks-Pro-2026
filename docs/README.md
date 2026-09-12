@@ -15,6 +15,7 @@
 - [AI banking foundation implementation plan](implementation/IMPL_AI_BANKING_FOUNDATION.md)
 - [Bank review classification implementation plan](implementation/IMPL_BANK_REVIEW_CLASSIFICATION.md)
 - [ADR 0004: Adopt upstream ledger banking](agent/decisions/0004-adopt-upstream-ledger-banking.md)
+- [ADR 0005: Clean mirror and upstream contribution branches](agent/decisions/0005-clean-mirror-contribution-model.md)
 
 Product and deployment documentation remains linked from the repository
 root README and the existing files in this directory.
