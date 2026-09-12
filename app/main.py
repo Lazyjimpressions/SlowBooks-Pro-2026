@@ -692,6 +692,17 @@ _AUTH_EXEMPT_EXACT = {
     "/analytics",  # redirect to SPA hash route
     "/favicon.ico",
     "/api/stripe/webhook",  # legacy alias — Stripe auth via signature
+    # Intuit's OAuth redirect lands the browser back here directly from
+    # accounts.intuit.com — a cross-site top-level navigation, so a
+    # SameSite=Strict session cookie is never attached (browsers withhold
+    # Strict cookies on any cross-site request, no exceptions). Session-
+    # gating this route made every QBO connection attempt dead-end on
+    # {"detail": "Not authenticated"} before qbo_service.handle_callback
+    # ever ran. Safe to exempt: the flow already carries its own CSRF
+    # protection independent of the session — get_auth_url() stores a
+    # random `state` token server-side and handle_callback() rejects any
+    # callback whose `state` doesn't match (see app/services/qbo_service.py).
+    "/api/qbo/callback",
 }
 # Provider payment routes that are public by design:
 #   - webhook: the provider's signature is the authentication
