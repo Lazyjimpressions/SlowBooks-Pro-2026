@@ -10,6 +10,8 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from pathlib import Path
 
+from contextvars import ContextVar
+
 from jinja2 import Environment, FileSystemLoader, Undefined
 from sqlalchemy.orm import Session
 
@@ -170,6 +172,11 @@ def template_env():
     return env
 
 
+_recorded_blanks: "ContextVar[list | None]" = ContextVar(
+    "recorded_blanks", default=None
+)
+
+
 class RecordingUndefined(Undefined):
     """Renders as nothing, like the default, and remembers that it did.
 
@@ -177,21 +184,33 @@ class RecordingUndefined(Undefined):
     nothing at all. `{{ config }}`, `{{ request }}` and a name the sandbox
     refuses all resolve to undefined and render as empty — so the operator
     sees a working template with a hole in it and no reason for the hole.
-    That is the same class as an error naming a command nobody can run, which
-    this product has now shipped four times.
 
     The fix is NOT to make the preview strict. The preview must render under
     the same rules as the mail, or it is not a preview — so this behaves
-    exactly like `Undefined` and simply records what it was asked for. The
-    preview reports the list alongside the body; the send never sees it.
+    exactly like `Undefined` and only records.
+
+    **The list lives in a ContextVar, not on the class.** The first version
+    appended to a class attribute, which @skytech reproduced as cross-request
+    contamination: `preview_template` is a sync `def`, so FastAPI runs it in a
+    threadpool, and with sixteen concurrent previews three returned another
+    request's variable names and two returned none of their own. Invisible on
+    a desktop; Server Edition serves a LAN, and two bookkeepers previewing at
+    once got each other's. anyio copies the context per task, so a ContextVar
+    is isolated per request.
+
+    **Only a RENDER is recorded.** `{% if pay_url %}` asks whether something
+    is there; that is a guard doing its job, not a hole. Reporting it would
+    flag the shipped default template on every preview, which is a false
+    alarm and the fastest way to teach an operator to ignore the line.
     """
 
-    _seen: list = []
-
     def _record(self):
+        seen = _recorded_blanks.get()
+        if seen is None:
+            return
         name = self._undefined_name or "a value"
-        if name not in RecordingUndefined._seen:
-            RecordingUndefined._seen.append(name)
+        if name not in seen:
+            seen.append(name)
 
     def __str__(self):  # noqa: D105 — Jinja renders through this
         self._record()
@@ -201,25 +220,19 @@ class RecordingUndefined(Undefined):
         self._record()
         return ""
 
-    def __iter__(self):
-        self._record()
-        return iter(())
-
-    def __bool__(self):
-        self._record()
-        return False
-
 
 def recording_template_env():
-    """`template_env()` plus a note of everything that resolved to nothing.
+    """`template_env()` plus a per-request note of what rendered as nothing.
 
-    Returns (env, seen) where `seen` is filled during render. Used only by the
-    preview — the send path must not pay for this or behave differently.
+    Returns (env, seen). `seen` fills during render and belongs to this
+    request only — the send path must not pay for this, and neither must
+    another request.
     """
     env = template_env()
-    RecordingUndefined._seen = []
+    seen: list[str] = []
+    _recorded_blanks.set(seen)
     env.undefined = RecordingUndefined
-    return env, RecordingUndefined._seen
+    return env, seen
 
 
 def invoice_email_label(invoice, company_settings: dict) -> str:
@@ -258,7 +271,14 @@ def invoice_email_context(invoice, company_settings: dict, pay_url: str = None) 
         "customer_name": (
             invoice.customer.name if invoice.customer else terms("Customer")
         ),
-        "pay_url": pay_url,
+        # Omitted rather than None when no provider is enabled. `{{ pay_url }}`
+        # used to render the literal text "None" into a customer's email, and
+        # `resolved_to_nothing` could not flag it because None is a real
+        # value. Undefined renders as empty, is reported, and `{% if pay_url %}`
+        # — which the shipped default uses — is still correctly falsy.
+        # @skytech, 2.12.1 gate: the one gap the feature is shaped to catch
+        # and structurally could not.
+        **({"pay_url": pay_url} if pay_url else {}),
         "doc_label": invoice_email_label(invoice, company_settings),
         "terms": terms,
     }

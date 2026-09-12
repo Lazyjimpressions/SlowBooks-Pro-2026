@@ -183,3 +183,90 @@ def test_the_editor_shows_it(client):
     )
     assert "resolved_to_nothing" in js
     assert "Rendered as nothing" in js
+
+
+def test_two_renders_at_once_do_not_see_each_others_blanks():
+    """@skytech reproduced cross-request contamination in the first version:
+    the recorder appended to a **class attribute**, and `preview_template` is
+    a sync `def`, so FastAPI runs it in a threadpool. With sixteen concurrent
+    previews, three returned another request's variable names and two
+    returned none of their own. Invisible on a desktop; **Server Edition
+    serves a LAN**, and two bookkeepers previewing at once got each other's.
+
+    Driven at the renderer rather than through the test client on purpose.
+    The client fixture shares one in-memory SQLite connection via StaticPool,
+    so eight threads through it break inside SQLAlchemy's result handling —
+    a failure about the harness, not the product. An earlier version of this
+    test did exactly that: it passed alone and failed in the full suite,
+    which is a flaky test, which is worse than no test.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.services.email_service import recording_template_env
+
+    def render(tag):
+        env, seen = recording_template_env()
+        names = [f"zz_{tag}_{i}" for i in range(40)]
+        body = "".join("{{ %s }}" % n for n in names)
+        env.from_string(body).render()
+        return tag, list(seen)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(render, range(16)))
+
+    for tag, seen in results:
+        assert seen, f"render {tag} reported nothing of its own"
+        foreign = [n for n in seen if not n.startswith(f"zz_{tag}_")]
+        assert not foreign, f"render {tag} saw another's names: {foreign[:3]}"
+        assert len(seen) == 40, f"render {tag} reported {len(seen)} of its 40"
+
+
+def test_a_guard_is_not_reported_as_a_hole(client, db_session, invoice):
+    """`{% if pay_url %}` asks whether something is there. That is a guard
+    doing its job, not a blank an author needs explaining — and the shipped
+    default template uses exactly that, so reporting it would raise a false
+    alarm on every preview and teach operators to ignore the line."""
+    r = _preview(client, invoice.id, body="{% if pay_url %}<p>Pay</p>{% endif %}")
+    assert r.status_code == 200, r.text
+    assert r.json()["resolved_to_nothing"] == []
+
+
+def test_pay_url_does_not_render_the_word_None(client, db_session, invoice):
+    """It used to be passed as `None` when no provider is enabled, so a bare
+    `{{ pay_url }}` mailed customers the literal text "None" — and
+    `resolved_to_nothing` could not flag it, because None is a real value.
+    Omitted from the context now: renders empty, and is reported."""
+    r = _preview(client, invoice.id, body="<p>Pay: {{ pay_url }}</p>")
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert "None" not in out["html_body"], out["html_body"]
+    assert "pay_url" in out["resolved_to_nothing"]
+
+
+def test_the_editor_hint_only_advertises_variables_that_exist(
+    client, db_session, invoice
+):
+    """@skytech found `{{ amount }}` in the editor's own hint line and not in
+    the context, so an operator following the product's hint was told by the
+    product that the hint was wrong. Every name the hint offers is rendered
+    here and must not come back as a blank."""
+    import re
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parents[1] / "app/static/js/settings.js").read_text(
+        encoding="utf-8"
+    )
+    hint = js[js.index("Variables:") : js.index("Filters:")]
+    names = re.findall(r"\{\{\s*([A-Za-z_][\w.]*)", hint)
+    assert names, "could not read the hint line"
+
+    body = "".join("<p>%s = {{ %s }}</p>" % (n, n) for n in names)
+    r = _preview(client, invoice.id, body=body)
+    assert r.status_code == 200, r.text
+    blank = [n for n in r.json()["resolved_to_nothing"]]
+    # pay_url is legitimately absent without a payment provider, and the hint
+    # now says so in the same breath.
+    unexpected = [n for n in blank if n != "pay_url"]
+    assert (
+        not unexpected
+    ), f"the editor advertises {unexpected}, which render as nothing"

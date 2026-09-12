@@ -52,6 +52,16 @@ to close it checked that the named file existed, which is exactly the check
 that passes while the instruction still fails. It now takes the command out
 of the message and runs it.
 
+**A template preview says what came out blank, and the editor's own list of
+what you can use is now accurate.** The hint under the editor offered
+`{{ amount }}`, which does not exist and rendered as nothing, and offered
+`{{ pay_url }}` without saying it is only set when a payment provider is
+enabled — where a template using it bare would put the word "None" into a
+customer's email. It no longer can: that name is simply absent when there is
+no link, so it renders as nothing and is reported like anything else. The
+list also now mentions the one variable that makes a single template read
+correctly as both an invoice and a sales receipt, which it never advertised.
+
 **A template preview says what came out blank.** Some things an operator
 might type — `{{ config }}`, `{{ request }}`, anything the template sandbox
 refuses — are simply not available to an email template, so they render as
