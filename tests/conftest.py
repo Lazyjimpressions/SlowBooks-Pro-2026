@@ -283,6 +283,28 @@ def db_engine(_suite_engine, request):
             pass
 
 
+@pytest.fixture(autouse=True)
+def _release_closed_event_loops():
+    """anyio 4.12 keeps a registry of per-run variables keyed weakly by
+    event loop — and one of the values is the run's root Task, which holds
+    the loop strongly. A value that references its own weak key can never
+    be collected, so every event loop the test client spins up (one per
+    request, without a context manager) stayed alive after it was closed:
+    loop, task, thread limiter, worker sets, contexts. Measured at ~2.3
+    loops per test and about a third of the suite's remaining growth.
+    Drop the entries for closed loops after each test. Private API, so a
+    version that changes it simply leaves the leak in place."""
+    yield
+    try:
+        from anyio.lowlevel import _run_vars
+    except Exception:
+        return
+    for loop in [
+        k for k in list(_run_vars) if getattr(k, "is_closed", lambda: False)()
+    ]:
+        _run_vars.pop(loop, None)
+
+
 @pytest.fixture
 def TestSession(db_engine):
     """The suite's session factory, bound to this test's transaction. The
