@@ -10,7 +10,9 @@ things are present and in the right order."""
 import re
 from pathlib import Path
 
-JS = (Path(__file__).resolve().parents[1] / "app/static/js/banking.js").read_text()
+JS = (Path(__file__).resolve().parents[1] / "app/static/js/banking.js").read_text(
+    encoding="utf-8"
+)
 
 
 def _handler(name):

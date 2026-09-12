@@ -97,7 +97,9 @@ def test_installed_build_is_not_told_to_run_python(monkeypatch):
 
 def test_the_installer_the_message_names_is_the_one_the_build_produces(monkeypatch):
     """Read the other half out of the packaging source, not from memory."""
-    iss = (Path(dl.ROOT) / "packaging" / "windows" / "SlowBooksPro.iss").read_text()
+    iss = (Path(dl.ROOT) / "packaging" / "windows" / "SlowBooksPro.iss").read_text(
+        encoding="utf-8"
+    )
     m = re.search(r"^OutputBaseFilename=(\S+)", iss, re.M)
     assert m, "OutputBaseFilename not found in the Inno Setup script"
     assert dl.WINDOWS_INSTALLER == m.group(1) + ".exe"
