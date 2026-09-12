@@ -61,6 +61,17 @@ PROTECTED_RE = re.compile(
     r"\b(" + "|".join(re.escape(w) for w in PROTECTED_WORDS) + r")\b", re.I
 )
 IDENT_RE = re.compile(r"^[a-z][a-z0-9]*([._-][a-z0-9]+)*$")
+# {{ invoice.invoice_number }} is a variable name, not a sentence: check 21
+# requires exactly that expression to survive, and the first cut of this
+# instrument flagged it (both agents, 2.13.1 gate)
+JINJA_RE = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}", re.S)
+
+
+def prose_of(s: str) -> str:
+    """The parts of a string a reader sees: template expressions removed."""
+    return JINJA_RE.sub(" ", s)
+
+
 SKIP_PREFIX = (
     "/api/auth",
     "/api/backups",
@@ -156,6 +167,17 @@ def classify(s: str) -> str:
     if " " in s or s[-1:] in ".!?:":
         return "sentence"
     return "label"
+
+
+def chart_names(c: Client) -> set[str]:
+    """Every account name in this company's chart, whoever created it: the
+    seed, the product on demand (4800 Late Fee Income appears after the first
+    late fee — skytech, 2.13.1 gate), or a person. An account's name is the
+    company's data and is never a vocabulary leak."""
+    status, rows = c.json("GET", "/api/accounts?active_only=false")
+    if status != 200 or not isinstance(rows, list):
+        status, rows = c.json("GET", "/api/accounts")
+    return {r.get("name", "").strip() for r in rows or [] if isinstance(r, dict)}
 
 
 def harvest_ids(c: Client, spec: dict) -> dict[str, list[int]]:
@@ -323,6 +345,7 @@ def main() -> int:
 
     try:
         c.json("PUT", "/api/settings", {"company_type": "business"})
+        accounts = chart_names(c)
         business = walk(c, spec, ids)
         c.json("PUT", "/api/settings", {"company_type": "nonprofit"})
         nonprofit = walk(c, spec, ids)
@@ -340,7 +363,7 @@ def main() -> int:
     for route, rows in nonprofit.items():
         biz = {(k, w, s) for k, w, s in business.get(route, [])}
         for kind, where, s in rows:
-            if not BUSINESS_RE.search(s) or classify(s) == "identifier":
+            if not BUSINESS_RE.search(prose_of(s)) or classify(s) == "identifier":
                 continue
             same_in_business = (kind, where, s) in biz
             src = source_backed(s, files) if same_in_business else None
@@ -356,6 +379,12 @@ def main() -> int:
                 # only a flagged pledge prints Pledge. The walk's seeded
                 # documents are unflagged, so the word here is the rule working.
                 verdict = "document face (per document, by design)"
+            elif re.sub(r"^\d{3,5}\s+", "", s.strip()) in accounts or any(
+                s.strip().startswith(name) for name in accounts if len(name) > 6
+            ):
+                # an account name from the company's own chart (report rows
+                # read "1100 Accounts Receivable   $35,280.36" in a PDF)
+                verdict = "chart data (account name)"
             elif src and (
                 src.startswith(SEEDED_DATA)
                 or TAX_TERM_RE.search(s)
@@ -391,7 +420,11 @@ def main() -> int:
     print(
         f"\nstrings captured: business {sum(len(v) for v in business.values())}, nonprofit {sum(len(v) for v in nonprofit.values())}"
     )
-    seeded = [r for r in report if r["verdict"] == "seeded data"]
+    seeded = [
+        r
+        for r in report
+        if r["verdict"] in ("seeded data", "chart data (account name)")
+    ]
     faces = [r for r in report if r["verdict"].startswith("document face")]
     if not PDFTOTEXT:
         print(
