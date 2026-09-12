@@ -7,10 +7,68 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.13.0 — Bank of America, in a file the bank produced
+
 **Bank of America detail CSV import.** Checking and savings detail exports
 with the bank's statement-summary preamble now import into the review queue.
 The statement's beginning-balance metadata is skipped because opening balances
-are posted separately through the linked ledger account.
+are posted separately through the linked ledger account. Contributed by
+@Lazyjimpressions, and parked for a day for one reason: no file a bank had
+produced. He opened two real exports, reported what they contain, and then
+committed a fixture derived from them with its byte shape pinned — CRLF, the
+six-row preamble, minus-sign debits, a blank amount on the balance row, a
+quoted comma in a description, a thousands separator. Every unknown the park
+recorded is answered by that file. The one gap left, a check-number column
+neither export has, is carried as a missing field rather than a wrong number.
+
+**Only a sentence written for the user leaves the process.** Four code-scanning
+alerts, open since August on the CSV, IIF and QuickBooks Online import routes,
+all said the same thing: a caught exception's text reaches a response. The
+sites already answered through the shared helper, and the scanner was still
+right — for a ValueError it returned the exception's own text, and nothing
+told "Missing customer NAME" apart from "invalid literal for int() with base
+10: 'abc'". "In our own words" meant "is a ValueError", a convention nobody
+could check. The marker is explicit now: a data problem carries the sentence
+it was raised with, the helper passes that on and nothing else, and Python's
+own wording is logged with its value and answered generically. A missing
+control account, which an import used to swallow into "unexpected error",
+tells the operator which account to restore. The query run locally against
+this tree reports no such sinks; the previous tree reported five.
+
+**A Windows machine without the WebView2 runtime is told what it can do.** The
+portable zip carries no runtime installer (the installer does), and the
+launcher's check for the runtime already existed. What was wrong was what it
+said: the installed application was told to run a Python command it has no
+way to run — no Python, no such file — the sixth appearance this month of an
+error telling somebody to do something they cannot do. The installed build is
+now told the two things it can do, and on Windows is offered the one path that
+works without the runtime: the app in the system browser, held open by a box
+the user closes to stop it. The tests execute that path against stubs and read
+the installer's name out of the packaging script rather than from memory. Not
+covered anywhere: the end-to-end on a machine with the runtime genuinely
+absent, which needs a scratch machine. Recorded as such rather than claimed.
+
+**On Windows, the server no longer waits a scheduler tick per request.** About
+half of all requests waited exactly 15.625 ms — a trivial health check cost
+the same as a full invoice write. The server process now asks for a 1 ms timer
+while it serves, and first tells Windows 11 not to ignore that request from a
+process with no window, which the server is. It logs the timer resolution
+before and after so the change can be confirmed on real hardware rather than
+assumed. Measured on the Windows lane of the release gate, not here.
+
+**The test suite builds its database once.** Every test used to build its own
+engine and schema; now the schema exists once and each test runs in a
+transaction that is rolled back. Peak memory 795 → 606 MB and wall time 6:43
+→ 4:00 on the same machine, with 2,199 tests passing in shuffled order. A
+sentinel asserts five tables empty at the start of every test, so a test that
+ever commits outside its transaction fails the next test by name. Found on
+the way: the async library's per-run registry kept every closed event loop
+alive through its own root task, one per request the test client made; those
+are released after each test now. Memory still climbs across a run, about
+170 KB per test from a source not yet named, so the issue stays open with
+the measurement rather than closing on the improvement.
+
+No schema change. An existing company file opens with no upgrade step.
 
 ### v2.12.1 — See an email template before you save it
 

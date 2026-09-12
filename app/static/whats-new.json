@@ -1,4 +1,12 @@
 {
+  "2.13.0": {
+    "title": "Bank of America, in a file the bank produced",
+    "items": [
+      "Import Bank of America checking and savings detail CSV exports into the bank feed review queue — contributed by Lazyjimpressions, and verified against exports the bank actually produced",
+      "On Windows, the server no longer waits a scheduler tick on about half of all requests",
+      "A Windows machine without the WebView2 runtime is told what it can do, and offered the app in its web browser instead"
+    ]
+  },
   "2.12.1": {
     "title": "See an email template before you save it",
     "items": [
