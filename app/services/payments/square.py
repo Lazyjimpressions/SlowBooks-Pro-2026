@@ -33,6 +33,7 @@ from app.models.invoices import Invoice
 from app.services.accounting import _q
 from app.services.payments import _http
 from app.services.payments.base import CheckoutSession, PaymentProvider, PaymentResult
+from app.services.donor_documents import document_label
 from app.services.terminology import document_reference, terms_for
 
 logger = logging.getLogger(__name__)
@@ -77,7 +78,9 @@ def build_payment_link_request(
         "json": {
             "idempotency_key": idempotency_key or f"inv-{invoice.id}-{uuid.uuid4()}",
             "quick_pay": {
-                "name": document_reference(terms, "Invoice", invoice.invoice_number),
+                "name": document_reference(
+                    document_label(invoice, terms), invoice.invoice_number
+                ),
                 "price_money": {"amount": amount_cents, "currency": "USD"},
                 "location_id": settings["square_location_id"],
             },
@@ -88,7 +91,7 @@ def build_payment_link_request(
                 ),
             },
             "payment_note": document_reference(
-                terms, "Invoice", invoice.invoice_number
+                document_label(invoice, terms), invoice.invoice_number
             ),
         },
     }

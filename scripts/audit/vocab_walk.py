@@ -25,6 +25,7 @@ import html
 import http.cookiejar
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -122,11 +123,21 @@ def strings_in(obj, path="$"):
             yield from strings_in(v, f"{path}[{i}]")
 
 
+PDFTOTEXT = shutil.which("pdftotext")
+PDFS_SKIPPED: list[str] = []
+
+
 def pdf_text(data: bytes) -> list[str]:
+    """Text of a PDF via poppler's pdftotext. Without poppler the PDF surface
+    is NOT walked — recorded by name in the summary, never a quiet zero
+    (2.13.1 gate: both agents' boxes lacked it, and the first cut died with
+    an error that never said 'pdftotext')."""
+    if not PDFTOTEXT:
+        return []
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         f.write(data)
     out = subprocess.run(
-        ["pdftotext", "-layout", f.name, "-"], capture_output=True, text=True
+        [PDFTOTEXT, "-layout", f.name, "-"], capture_output=True, text=True
     )
     Path(f.name).unlink(missing_ok=True)
     return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
@@ -221,6 +232,9 @@ def walk(c: Client, spec: dict, ids: dict) -> dict[str, list[tuple[str, str, str
                 else ""
             )
             if "pdf" in ctype:
+                if not PDFTOTEXT:
+                    PDFS_SKIPPED.append(key)
+                    continue
                 for ln in pdf_text(body):
                     seen[key].append(("pdf", f"{status}", ln))
             elif "html" in ctype:
@@ -266,7 +280,10 @@ def walk(c: Client, spec: dict, ids: dict) -> dict[str, list[tuple[str, str, str
 def source_backed(literal: str, files: list[Path]) -> str | None:
     """file:line if the literal (or a >= 12-char fragment) is in the tree."""
     frag = literal.strip()
-    if len(frag) < 6:
+    if len(frag) < 8:
+        # "Invoice" is seven characters and appears in a hundred files; an
+        # attribution for a word that short points somewhere arbitrary and
+        # reads as better evidence than it is (skytech, 2.13.1 gate)
         return None
     for f in files:
         try:
@@ -277,7 +294,10 @@ def source_backed(literal: str, files: list[Path]) -> str | None:
         if i < 0 and len(frag) > 30:
             i = text.find(frag[:30])
         if i >= 0:
-            return f"{f.relative_to(ROOT)}:{text.count(chr(10), 0, i) + 1}"
+            # as_posix: on Windows relative_to() renders backslashes, and the
+            # seeded-data exemption compares against "app/seed/" (skytech,
+            # 2.13.1 gate — nine chart names read as leaks there)
+            return f"{f.relative_to(ROOT).as_posix()}:{text.count(chr(10), 0, i) + 1}"
     return None
 
 
@@ -324,7 +344,19 @@ def main() -> int:
                 continue
             same_in_business = (kind, where, s) in biz
             src = source_backed(s, files) if same_in_business else None
-            if src and (
+            if (
+                re.search(
+                    r"/(invoices|estimates)/\{[a-z_]+\}/(pdf|print-preview|email-preview)",
+                    route,
+                )
+                or "/email-templates/preview" in route
+            ):
+                # the document names ITSELF (donor_documents.document_label): a
+                # nonprofit's program-fee invoice prints Invoice by design, and
+                # only a flagged pledge prints Pledge. The walk's seeded
+                # documents are unflagged, so the word here is the rule working.
+                verdict = "document face (per document, by design)"
+            elif src and (
                 src.startswith(SEEDED_DATA)
                 or TAX_TERM_RE.search(s)
                 or s.strip() in CHART_NAMES
@@ -360,8 +392,15 @@ def main() -> int:
         f"\nstrings captured: business {sum(len(v) for v in business.values())}, nonprofit {sum(len(v) for v in nonprofit.values())}"
     )
     seeded = [r for r in report if r["verdict"] == "seeded data"]
+    faces = [r for r in report if r["verdict"].startswith("document face")]
+    if not PDFTOTEXT:
+        print(
+            f"\nPDFs NOT WALKED: pdftotext (poppler) is not installed here — "
+            f"{len(set(PDFS_SKIPPED))} PDF routes skipped. Install poppler to cover the "
+            "printed documents; a zero without it is not a pass on that surface."
+        )
     print(
-        f"business words in nonprofit output: {len(report)} — {len(leaks)} source-backed CODE LEAKS across {len(routes)} routes, {len(seeded)} seeded data, {len(dyn)} data/dynamic\n"
+        f"business words in nonprofit output: {len(report)} — {len(leaks)} source-backed CODE LEAKS across {len(routes)} routes, {len(seeded)} seeded data, {len(faces)} document-face, {len(dyn)} data/dynamic\n"
     )
     for route, rs in sorted(routes.items()):
         print(f"== {route}")

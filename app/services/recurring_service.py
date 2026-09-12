@@ -39,6 +39,7 @@ def _advance_next_due(current: date, frequency: str) -> date:
 def generate_due_invoices(db: Session, as_of: date = None) -> list[int]:
     """Generate all invoices that are due on or before as_of date.
     Returns list of created invoice IDs."""
+    from app.services.donor_documents import document_label
     from app.services.terminology import terms_from_db
 
     words = terms_from_db(db)
@@ -146,7 +147,7 @@ def generate_due_invoices(db: Session, as_of: date = None) -> list[int]:
                     "account_id": ar_id,
                     "debit": total,
                     "credit": Decimal("0"),
-                    "description": words.text(f"Recurring Invoice #{invoice_number}"),
+                    "description": f"Recurring {document_label(candidate, words)} #{invoice_number}",
                 }
             ]
             for rline in rec.lines:
@@ -180,7 +181,7 @@ def generate_due_invoices(db: Session, as_of: date = None) -> list[int]:
             txn = create_journal_entry(
                 db,
                 rec.next_due,
-                words.text(f"Recurring Invoice #{invoice_number}"),
+                f"Recurring {document_label(candidate, words)} #{invoice_number}",
                 journal_lines,
                 source_type="invoice",
                 source_id=invoice.id,

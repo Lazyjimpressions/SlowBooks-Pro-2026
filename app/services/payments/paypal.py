@@ -29,6 +29,7 @@ from app.models.invoices import Invoice
 from app.services.accounting import _q
 from app.services.payments import _http
 from app.services.payments.base import CheckoutSession, PaymentProvider, PaymentResult
+from app.services.donor_documents import document_label
 from app.services.terminology import document_reference, terms_for
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ def build_order_request(
                     "custom_id": str(invoice.id),
                     "invoice_id": invoice.invoice_number,
                     "description": document_reference(
-                        terms, "Invoice", invoice.invoice_number
+                        document_label(invoice, terms), invoice.invoice_number
                     ),
                 }
             ],

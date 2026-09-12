@@ -26,6 +26,7 @@ from app.services.settings_service import get_all_settings as get_settings
 from app.services.closing_date import check_closing_date
 
 from app.routes.invoices._router import router
+from app.services.donor_documents import document_label
 from app.services.terminology import document_reference, terms_from_db
 
 
@@ -74,7 +75,7 @@ def void_invoice(invoice_id: int, db: Session = Depends(get_db)):
             create_journal_entry(
                 db,
                 invoice.date,
-                terms_from_db(db).text(f"VOID Invoice #{invoice.invoice_number}"),
+                f"VOID {document_label(invoice, terms_from_db(db))} #{invoice.invoice_number}",
                 reverse_lines,
                 source_type="invoice_void",
                 source_id=invoice.id,
@@ -210,19 +211,19 @@ def apply_late_fees(db: Session = Depends(get_db)):
                 "account_id": ar_id,
                 "debit": fee_amount,
                 "credit": Decimal("0"),
-                "description": words.text(f"Late fee - Invoice #{inv.invoice_number}"),
+                "description": f"Late fee - {document_label(inv, words)} #{inv.invoice_number}",
             },
             {
                 "account_id": late_fee_account.id,
                 "debit": Decimal("0"),
                 "credit": fee_amount,
-                "description": words.text(f"Late fee - Invoice #{inv.invoice_number}"),
+                "description": f"Late fee - {document_label(inv, words)} #{inv.invoice_number}",
             },
         ]
         create_journal_entry(
             db,
             today,
-            words.text(f"Late fee - Invoice #{inv.invoice_number}"),
+            f"Late fee - {document_label(inv, words)} #{inv.invoice_number}",
             journal_lines,
             source_type="late_fee",
             source_id=inv.id,
@@ -284,8 +285,9 @@ def write_off_invoice(
 
     ar_id = get_ar_account_id(db)
     bad_debt_id = get_bad_debt_account_id(db)
-    memo = data.memo or terms_from_db(db).text(
-        f"Write-off: Invoice #{inv.invoice_number}"
+    memo = (
+        data.memo
+        or f"Write-off: {document_label(inv, terms_from_db(db))} #{inv.invoice_number}"
     )
     cm = None
     for _ in range(10):
@@ -333,7 +335,9 @@ def write_off_invoice(
         db,
         data.date,
         f"Credit Memo {cm.memo_number} - write-off of "
-        + document_reference(terms_from_db(db), "Invoice", inv.invoice_number),
+        + document_reference(
+            document_label(inv, terms_from_db(db)), inv.invoice_number
+        ),
         [
             {
                 "account_id": bad_debt_id,
@@ -413,6 +417,7 @@ def duplicate_invoice(invoice_id: int, db: Session = Depends(get_db)):
         notes=original.notes,
         class_id=original.class_id,
     )
+    face = document_label(new_invoice, words)
     db.add(new_invoice)
     db.flush()
 
@@ -442,7 +447,7 @@ def duplicate_invoice(invoice_id: int, db: Session = Depends(get_db)):
                 "account_id": ar_id,
                 "debit": Decimal(str(new_invoice.total)),
                 "credit": Decimal("0"),
-                "description": document_reference(words, "Invoice", new_number),
+                "description": document_reference(face, new_number),
             }
         )
         # Credit income for each line
@@ -478,9 +483,7 @@ def duplicate_invoice(invoice_id: int, db: Session = Depends(get_db)):
         txn = create_journal_entry(
             db,
             today,
-            document_reference(
-                words, "Invoice", new_number, customer.name if customer else ""
-            ),
+            document_reference(face, new_number, customer.name if customer else ""),
             journal_lines,
             source_type="invoice",
             source_id=new_invoice.id,

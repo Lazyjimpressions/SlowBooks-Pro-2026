@@ -40,6 +40,7 @@ def post_sale_for_invoice(db: Session, invoice, txn_date=None) -> None:
     """
     date_to_use = txn_date or invoice.date
     ref = getattr(invoice, "invoice_number", None) or f"inv#{invoice.id}"
+    from app.services.donor_documents import document_label
     from app.services.terminology import terms_from_db
 
     terms = terms_from_db(db)
@@ -52,7 +53,7 @@ def post_sale_for_invoice(db: Session, invoice, txn_date=None) -> None:
                 quantity=Decimal(str(line.quantity)),
                 source_type="invoice",
                 source_id=invoice.id,
-                memo=terms.text(f"Invoice {ref}"),
+                memo=f"{document_label(invoice, terms)} {ref}",
                 txn_date=date_to_use,
             )
 

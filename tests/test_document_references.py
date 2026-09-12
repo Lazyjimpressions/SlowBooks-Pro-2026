@@ -27,13 +27,14 @@ def _customer(client, name="Boise Neon Supply"):
     return r.json()["id"]
 
 
-def _invoice(client, cid, amount=250, date="2026-03-01"):
+def _invoice(client, cid, amount=250, date="2026-03-01", pledge=False):
     r = client.post(
         "/api/invoices",
         json={
             "customer_id": cid,
             "date": date,
             "tax_rate": 0,
+            "is_pledge": pledge,
             "lines": [
                 {"description": "x", "quantity": 1, "rate": amount, "line_order": 0}
             ],
@@ -44,7 +45,9 @@ def _invoice(client, cid, amount=250, date="2026-03-01"):
 
 
 def _ledger_rows(client, invoice_number):
-    gl = client.get("/api/reports/general-ledger").json()
+    gl = client.get(
+        "/api/reports/general-ledger?start_date=2020-01-01&end_date=2030-12-31"
+    ).json()
     text = str(gl)
     return [
         m
@@ -61,18 +64,35 @@ def test_business_postings_keep_their_words(client, seed_accounts):
     ), rows
 
 
-def test_a_nonprofit_posts_a_pledge(client, seed_accounts):
+def test_a_nonprofit_posts_a_pledge_as_a_pledge_and_an_invoice_as_an_invoice(
+    client, seed_accounts
+):
+    """The document decides, not the company: a flagged pledge posts as
+    Pledge; a program-fee invoice in the same nonprofit stays Invoice —
+    which is what its printed page says."""
     client.put("/api/settings", json={"company_type": "nonprofit"})
-    inv = _invoice(client, _customer(client, "Grant Foundation"))
-    rows = _ledger_rows(client, inv["invoice_number"])
-    assert rows and all(
-        r == f"Pledge #{inv['invoice_number']} - Grant Foundation" for r in rows
-    ), rows
+    cid = _customer(client, "Grant Foundation")
+    pledge = _invoice(client, cid, pledge=True)
+    fee = _invoice(client, cid, pledge=False)
+    assert all(
+        r == f"Pledge #{pledge['invoice_number']} - Grant Foundation"
+        for r in _ledger_rows(client, pledge["invoice_number"])
+    )
+    assert all(
+        r == f"Invoice #{fee['invoice_number']} - Grant Foundation"
+        for r in _ledger_rows(client, fee["invoice_number"])
+    )
+    # and the three surfaces agree, per document
+    for inv, face in ((pledge, "Pledge"), (fee, "Invoice")):
+        page = client.get(f"/api/invoices/{inv['id']}/print-preview").text
+        assert f"<title>{face}</title>" in page, (face, page[:200])
+        mail = client.post(f"/api/invoices/{inv['id']}/email-preview", json={}).json()
+        assert mail["subject"].startswith(f"{face} #{inv['invoice_number']}"), mail
 
 
-def test_editing_keeps_the_company_words(client, seed_accounts):
+def test_editing_keeps_the_document_face(client, seed_accounts):
     client.put("/api/settings", json={"company_type": "nonprofit"})
-    inv = _invoice(client, _customer(client, "Grant Foundation"))
+    inv = _invoice(client, _customer(client, "Grant Foundation"), pledge=True)
     r = client.put(
         f"/api/invoices/{inv['id']}",
         json={
@@ -85,17 +105,20 @@ def test_editing_keeps_the_company_words(client, seed_accounts):
 
 
 def test_history_keeps_the_words_it_was_posted_with(client, seed_accounts):
-    """Nothing rewrites the ledger. A company that becomes a nonprofit keeps
-    "Invoice #" on what it posted as a business, and posts "Pledge #" from
-    then on. The two coexist, and that is the documented behaviour."""
-    old = _invoice(client, _customer(client), date="2026-01-10")
+    """Nothing rewrites the ledger. A pledge posted as a pledge keeps
+    "Pledge #" after the company flips back to business (its page then
+    prints Invoice — the ledger is history, the page is now)."""
     client.put("/api/settings", json={"company_type": "nonprofit"})
-    new = _invoice(client, _customer(client, "Grant Foundation"), date="2026-02-10")
+    old = _invoice(
+        client, _customer(client, "Grant Foundation"), date="2026-01-10", pledge=True
+    )
+    client.put("/api/settings", json={"company_type": "business"})
+    new = _invoice(client, _customer(client), date="2026-02-10")
     assert any(
-        r.startswith("Invoice #") for r in _ledger_rows(client, old["invoice_number"])
+        r.startswith("Pledge #") for r in _ledger_rows(client, old["invoice_number"])
     )
     assert any(
-        r.startswith("Pledge #") for r in _ledger_rows(client, new["invoice_number"])
+        r.startswith("Invoice #") for r in _ledger_rows(client, new["invoice_number"])
     )
 
 
@@ -119,7 +142,7 @@ def test_estimate_conversion_and_reissue_use_the_same_helper():
                 re.search(r'f"[^"]*\b(Invoice|Sales Receipt) #?\{', line)
                 and "HTTPException" not in window
                 and "detail=" not in window
-                and ".text(" not in window
+                and "document_label(" not in window
             ):
                 offenders.append(f"{path.relative_to(ROOT)}:{n}: {line.strip()[:80]}")
     assert offenders == [], "\n".join(offenders)
@@ -138,12 +161,23 @@ def test_square_link_says_pledge_and_keeps_every_key():
     biz = sq.build_payment_link_request(
         square_invoice(), SQUARE_SETTINGS, "https://b.example", "idem"
     )
+    pledge = square_invoice()
+    pledge.is_pledge = True
     npo = sq.build_payment_link_request(
+        pledge,
+        {**SQUARE_SETTINGS, "company_type": "nonprofit"},
+        "https://b.example",
+        "idem",
+    )
+    fee = sq.build_payment_link_request(
         square_invoice(),
         {**SQUARE_SETTINGS, "company_type": "nonprofit"},
         "https://b.example",
         "idem",
     )
+    assert (
+        fee["json"]["quick_pay"]["name"] == "Invoice #INV-1042"
+    )  # unflagged stays an invoice
     assert biz["json"]["quick_pay"]["name"] == "Invoice #INV-1042"
     assert npo["json"]["quick_pay"]["name"] == "Pledge #INV-1042"
     assert npo["json"]["payment_note"] == "Pledge #INV-1042"
@@ -167,9 +201,9 @@ def test_paypal_order_says_pledge_and_keeps_its_ids():
     biz = pp.build_order_request(
         square_invoice(), PROVIDER_SETTINGS, "https://b.example", "TOK"
     )
-    npo = pp.build_order_request(
-        square_invoice(), NONPROFIT_SETTINGS, "https://b.example", "TOK"
-    )
+    pledge = square_invoice()
+    pledge.is_pledge = True
+    npo = pp.build_order_request(pledge, NONPROFIT_SETTINGS, "https://b.example", "TOK")
     b, n = biz["json"]["purchase_units"][0], npo["json"]["purchase_units"][0]
     assert (
         b["description"] == "Invoice #INV-1042"
@@ -200,7 +234,9 @@ def test_stripe_session_says_pledge_and_keeps_its_metadata(monkeypatch):
 
     monkeypatch.setattr(st.stripe.checkout, "Session", _Session)
     settings = {**NONPROFIT_SETTINGS, "stripe_secret_key": "sk_test"}
-    st.StripeProvider().create_checkout(square_invoice(), settings, "https://b.example")
+    pledge = square_invoice()
+    pledge.is_pledge = True
+    st.StripeProvider().create_checkout(pledge, settings, "https://b.example")
     product = captured["line_items"][0]["price_data"]["product_data"]
     assert product["name"] == "Pledge #INV-1042"
     assert product["description"] == "Payment for pledge #INV-1042"
@@ -226,7 +262,10 @@ def test_nothing_parses_a_description_for_the_document_words():
     assert offenders == [], "\n".join(offenders)
 
 
-def test_email_defaults_are_seeded_in_the_company_words(client):
+def test_email_defaults_name_the_document_through_doc_label(client, seed_accounts):
+    """The seeded templates say {{ doc_label }}, so one saved template reads
+    Invoice for an invoice and Pledge for a pledge — and the Jinja
+    expression stays invoice.invoice_number (the first cut swapped inside it)."""
     client.put("/api/settings", json={"company_type": "nonprofit"})
     r = client.post("/api/email-templates/seed-defaults")
     assert r.status_code == 200, r.text
@@ -235,18 +274,35 @@ def test_email_defaults_are_seeded_in_the_company_words(client):
         for t in client.get("/api/email-templates").json()
         if t["name"] == "invoice_email"
     )
-    assert tpl["subject_template"].startswith("Pledge #{{ invoice.invoice_number }}")
-    assert "attached Pledge #" in tpl["body_template"]
-    assert "Invoice" not in tpl["subject_template"] + tpl["body_template"]
+    assert tpl["subject_template"].startswith(
+        "{{ doc_label }} #{{ invoice.invoice_number }}"
+    )
+    assert (
+        "attached {{ doc_label }} #{{ invoice.invoice_number }}" in tpl["body_template"]
+    )
+    assert "pledge.invoice_number" not in tpl["subject_template"] + tpl["body_template"]
+    cid = _customer(client, "Grant Foundation")
+    pledge = _invoice(client, cid, pledge=True)
+    fee = _invoice(client, cid, pledge=False)
+    assert (
+        client.post(f"/api/invoices/{pledge['id']}/email-preview", json={})
+        .json()["subject"]
+        .startswith("Pledge #")
+    )
+    assert (
+        client.post(f"/api/invoices/{fee['id']}/email-preview", json={})
+        .json()["subject"]
+        .startswith("Invoice #")
+    )
 
 
-def test_void_and_late_fee_postings_speak_the_company_words(client, seed_accounts):
+def test_void_and_late_fee_postings_use_the_document_face(client, seed_accounts):
     """Found by check 0 on the shipped 2.13.1 artifact, not by the grep:
     the void reversal and the late-fee posting compose the word in the
     middle of a sentence."""
     client.put("/api/settings", json={"company_type": "nonprofit"})
     cid = _customer(client, "Grant Foundation")
-    inv = _invoice(client, cid, date="2025-01-05")
+    inv = _invoice(client, cid, date="2025-01-05", pledge=True)
     r = client.post(f"/api/invoices/{inv['id']}/void")
     assert r.status_code == 200, r.text
     gl = str(
@@ -257,7 +313,7 @@ def test_void_and_late_fee_postings_speak_the_company_words(client, seed_account
     assert f"VOID Pledge #{inv['invoice_number']}" in gl
     assert "VOID Invoice" not in gl
 
-    overdue = _invoice(client, cid, date="2025-01-05")
+    overdue = _invoice(client, cid, date="2025-01-05", pledge=True)
     assert (
         client.post(f"/api/invoices/{overdue['id']}/send").status_code == 200
     )  # drafts are never charged

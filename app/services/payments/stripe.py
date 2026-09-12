@@ -11,6 +11,7 @@ import stripe
 
 from app.models.invoices import Invoice
 from app.services.payments.base import CheckoutSession, PaymentProvider, PaymentResult
+from app.services.donor_documents import document_label
 from app.services.terminology import document_reference, terms_for
 
 
@@ -50,11 +51,9 @@ class StripeProvider(PaymentProvider):
                         "currency": "usd",
                         "product_data": {
                             "name": document_reference(
-                                terms, "Invoice", invoice.invoice_number
+                                document_label(invoice, terms), invoice.invoice_number
                             ),
-                            "description": terms.text(
-                                f"Payment for invoice #{invoice.invoice_number}"
-                            ),
+                            "description": f"Payment for {document_label(invoice, terms).lower()} #{invoice.invoice_number}",
                         },
                         "unit_amount": amount_cents,
                     },

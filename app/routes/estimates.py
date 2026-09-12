@@ -30,6 +30,7 @@ from app.services.accounting import (
     get_default_income_account_id,
     get_sales_tax_account_id,
 )
+from app.services.donor_documents import document_label
 from app.services.terminology import document_reference, terms_from_db
 
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
@@ -297,6 +298,7 @@ def convert_to_invoice(estimate_id: int, db: Session = Depends(get_db)):
         job_id=estimate.job_id,
         notes=estimate.notes,
     )
+    face = document_label(invoice, words)
     db.add(invoice)
     db.flush()
 
@@ -334,7 +336,7 @@ def convert_to_invoice(estimate_id: int, db: Session = Depends(get_db)):
                 "account_id": ar_id,
                 "debit": Decimal(str(invoice.total)),
                 "credit": Decimal("0"),
-                "description": document_reference(words, "Invoice", invoice_number),
+                "description": document_reference(face, invoice_number),
             }
         )
         # Credit income for each line item
@@ -370,9 +372,7 @@ def convert_to_invoice(estimate_id: int, db: Session = Depends(get_db)):
         txn = create_journal_entry(
             db,
             estimate.date,
-            document_reference(
-                words, "Invoice", invoice_number, customer.name if customer else ""
-            ),
+            document_reference(face, invoice_number, customer.name if customer else ""),
             journal_lines,
             source_type="invoice",
             source_id=invoice.id,

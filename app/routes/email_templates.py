@@ -24,9 +24,9 @@ router = APIRouter(prefix="/api/email-templates", tags=["email-templates"])
 DEFAULT_TEMPLATES = [
     {
         "name": "invoice_email",
-        "subject_template": "Invoice #{{ invoice.invoice_number }} from {{ company.company_name }}",
+        "subject_template": "{{ doc_label }} #{{ invoice.invoice_number }} from {{ company.company_name }}",
         "body_template": """<p>Dear {{ customer_name }},</p>
-<p>Please find attached Invoice #{{ invoice.invoice_number }} for {{ invoice.total | currency }}.</p>
+<p>Please find attached {{ doc_label }} #{{ invoice.invoice_number }} for {{ invoice.total | currency }}.</p>
 <p>Payment is due by {{ invoice.due_date | fdate }}.</p>
 {% if pay_url %}<p><a href="{{ pay_url }}">Pay Online</a></p>{% endif %}
 <p>Thank you for your business.</p>
@@ -43,9 +43,9 @@ DEFAULT_TEMPLATES = [
     },
     {
         "name": "past_due_reminder",
-        "subject_template": "Reminder: Invoice #{{ invoice.invoice_number }} is past due",
+        "subject_template": "Reminder: {{ doc_label }} #{{ invoice.invoice_number }} is past due",
         "body_template": """<p>Dear {{ customer_name }},</p>
-<p>This is a friendly reminder that Invoice #{{ invoice.invoice_number }} for {{ invoice.balance_due | currency }} was due on {{ invoice.due_date | fdate }}.</p>
+<p>This is a friendly reminder that {{ doc_label }} #{{ invoice.invoice_number }} for {{ invoice.balance_due | currency }} was due on {{ invoice.due_date | fdate }}.</p>
 <p>Please arrange payment at your earliest convenience.</p>
 <p>{{ company.company_name }}</p>""",
         "template_type": "past_due",

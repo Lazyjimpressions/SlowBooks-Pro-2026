@@ -24,25 +24,27 @@ empty state, which the 2.9.1 sweep missed because it is lower-case, is
 wrapped on the page and in the PDF. And an all-caps dictionary key was being
 treated as a shouted sentence: "P&L analysis" came out "ACTIVITIES analysis".
 
-**What a posting writes for itself is in the company's words.** Twenty-two
+**What a posting writes for itself is in the document's own words.** Twenty-two
 sites composed "Invoice #1081 - Boise Neon Supply" into stored ledger
 descriptions, the inventory memo, the void reversal, the late fee, the
-write-off, the recurring run, the provider payment record, and the line
-item a payer sees on the Stripe, Square or PayPal page. A nonprofit now
-posts "Pledge #1081". The
-words are chosen once, at posting time; **history is never rewritten** — a
-company that becomes a nonprofit keeps "Invoice #" on what it posted as a
-business, and the two coexist. The integrations never keyed on those words:
-Stripe resolves by metadata, PayPal by its custom id, Square by the order
-id, and the tests pin that every id, amount and URL is byte-identical
-between the two company types while only the text differs. QuickBooks
-import keeps QuickBooks' words; a vendor's invoice on a printed check stays
-an invoice; CSV export headers are unchanged.
+write-off, the recurring run, the provider payment record, and the line item
+a payer sees on the Stripe, Square or PayPal page. They now say what the
+document itself is — the same rule the printed page and the covering email
+already used: a flagged pledge posts as "Pledge #1081", a nonprofit's
+program-fee invoice stays "Invoice #1081", and the ledger, the email and the
+printed document agree. The first cut of this swapped every invoice to Pledge
+and the donor's PDF disagreed with the ledger; the macOS QA lane found it.
+**History is never rewritten** — the words are chosen once, at posting time.
+The integrations never keyed on those words: Stripe resolves by metadata,
+PayPal by its custom id, Square by the order id, and the tests pin that every
+id, amount and URL is byte-identical while only the text differs. QuickBooks
+import keeps QuickBooks' words; a vendor's invoice on a printed check stays an
+invoice; CSV export headers are unchanged.
 
-**Default email templates are seeded in the company's words.** A nonprofit's
-saved, editable invoice template no longer opens with "Invoice #" — and the
-Jinja expressions inside it are left alone, because the first cut turned
-`{{ invoice.invoice_number }}` into `{{ pledge.invoice_number }}`.
+**Default email templates name the document through `{{ doc_label }}`.** One
+saved template reads Invoice for an invoice and Pledge for a pledge, instead of
+opening with a fixed word; the variable was already in the editor's list. A
+template you have already saved is yours and is not touched.
 
 **Connecting QuickBooks Online works again.** Contributed by
 @CimarronSiteServices (#151, root cause in #152). Intuit's consent screen

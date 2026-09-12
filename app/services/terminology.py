@@ -140,18 +140,19 @@ class Terms:
         return re.sub(r"\W", "", self(key))
 
 
-def document_reference(
-    terms: "Terms", kind: str, number, name: str | None = None
-) -> str:
+def document_reference(face: str, number, name: str | None = None) -> str:
     """The text a posting writes for itself — "Invoice #1081 - Boise Neon
-    Supply" — in the company's words: a nonprofit posts "Pledge #1081 - …".
+    Supply", "Pledge #1081 - Grant Foundation" — from the document's own
+    face (donor_documents.document_label), never from the company's
+    vocabulary: a nonprofit's program-fee invoice stays an Invoice in its
+    ledger because it prints as one.
 
-    This is DISPLAY text, written once at posting time and never parsed:
-    the ledger keys documents by source_type and source_id, and the
-    payment providers by their own ids and metadata. History keeps the
-    words that were in use when it was posted; nothing rewrites it.
+    DISPLAY text, written once at posting time and never parsed: the
+    ledger keys documents by source_type and source_id, and the payment
+    providers by their own ids and metadata. History keeps the words in
+    use when it was posted; nothing rewrites it.
     """
-    ref = f"{terms(kind)} #{number}"
+    ref = f"{face} #{number}"
     return f"{ref} - {name}" if name else ref
 
 

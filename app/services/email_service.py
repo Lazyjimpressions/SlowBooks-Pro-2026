@@ -275,14 +275,10 @@ def invoice_email_label(invoice, company_settings: dict) -> str:
     """What the attached document is called in the email: Invoice, Pledge,
     Sales Receipt or Donation Receipt — the same literal face the PDF
     prints (donor_documents.invoice_doc_kind), never the vocabulary swap."""
-    from app.services.donor_documents import invoice_doc_kind
+    from app.services.donor_documents import document_label
     from app.services.terminology import terms_for
 
-    kind = invoice_doc_kind(invoice, terms_for(company_settings))
-    return {
-        "SalesReceipt": "Sales Receipt",
-        "DonationReceipt": "Donation Receipt",
-    }.get(kind, kind)
+    return document_label(invoice, terms_for(company_settings))
 
 
 def invoice_email_context(invoice, company_settings: dict, pay_url: str = None) -> dict:

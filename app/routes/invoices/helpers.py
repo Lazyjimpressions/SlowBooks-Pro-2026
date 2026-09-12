@@ -14,7 +14,7 @@ from app.services.accounting import (
     compute_line_totals,
     _q,
 )
-from app.services.terminology import document_reference, terms_from_db
+from app.services.terminology import document_reference
 
 
 def _due_date_from_terms(base_date: date, terms: str | None) -> date:
@@ -73,19 +73,20 @@ def _build_invoice_journal_lines(
     default_income_id,
     lines_iter,
     invoice_number,
+    face: str = "Invoice",
 ):
     """Build the journal-line list for an invoice. Used by create/update/duplicate.
 
     `lines_iter` yields objects with .quantity, .rate, and .item_id.
+    `face` is the document's own name (donor_documents.document_label).
     """
-    words = terms_from_db(db)
     journal_lines = []
     journal_lines.append(
         {
             "account_id": ar_id,
             "debit": Decimal(str(invoice_total)),
             "credit": Decimal("0"),
-            "description": document_reference(words, "Invoice", invoice_number),
+            "description": document_reference(face, invoice_number),
         }
     )
     for ld in lines_iter:

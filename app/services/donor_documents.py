@@ -74,11 +74,26 @@ def invoice_doc_kind(inv, t: Terms) -> str:
     DonationReceipt / Pledge / Invoice for a nonprofit (a nonprofit still
     invoices program fees and rentals, so only a flagged pledge prints as
     one)."""
+    receipt = getattr(inv, "is_sales_receipt", False)
     if not t.is_nonprofit:
-        return "SalesReceipt" if inv.is_sales_receipt else "Invoice"
-    if inv.is_sales_receipt:
+        return "SalesReceipt" if receipt else "Invoice"
+    if receipt:
         return "DonationReceipt"
     return "Pledge" if getattr(inv, "is_pledge", False) else "Invoice"
+
+
+def document_label(inv, t: Terms) -> str:
+    """The document's name as a person says it — Invoice, Pledge, Sales
+    Receipt, Donation Receipt — from the same rule the printed page uses.
+    Everything a posting writes about the document (its ledger lines, the
+    void, the late fee, the payment-page line item) says this, so the
+    ledger, the covering email and the printed document agree. Never the
+    vocabulary swap: a nonprofit's program-fee invoice stays an Invoice
+    on all three."""
+    kind = invoice_doc_kind(inv, t)
+    return {"SalesReceipt": "Sales Receipt", "DonationReceipt": "Donation Receipt"}.get(
+        kind, kind
+    )
 
 
 def invoice_pdf_context(inv, company: dict) -> dict:
