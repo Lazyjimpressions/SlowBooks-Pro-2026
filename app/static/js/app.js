@@ -207,7 +207,7 @@ const App = {
                         ${inactive
                             ? `<button class="btn btn-sm btn-secondary" onclick="App.setAccountActive(${a.id}, true)">Reactivate</button>`
                             : `<button class="btn btn-sm btn-secondary" onclick="App.setAccountActive(${a.id}, false)">Deactivate</button>`}
-                        ${a.is_control ? '' : `<button class="btn btn-sm btn-secondary" onclick="App.deleteAccount(${a.id}, ${JSON.stringify(a.name)})">Delete</button>`}
+                        ${a.is_control ? '' : `<button class="btn btn-sm btn-secondary" onclick="App.deleteAccount(${a.id})">Delete</button>`}
                     </td>
                 </tr>`;
             }
@@ -263,7 +263,26 @@ const App = {
         } catch (err) { toast(err.message, 'error'); }
     },
 
-    async deleteAccount(id, name) {
+    // Only the id crosses into the attribute. It used to carry the name as
+    // well, via JSON.stringify inside a double-quoted onclick — so the JSON's
+    // own first quote closed the attribute, the handler was the fragment
+    // `App.deleteAccount(5, `, and clicking raised a SyntaxError. Silently:
+    // no request, no toast, no dialog, on EVERY row, because the break is in
+    // the quoting rather than in any particular name.
+    //
+    // Found at the GUI by both QA agents on the 2.12.0 gate. @skytech checked
+    // launcher.log and established that this application had never issued a
+    // single DELETE /api/accounts/* — the button was not being refused, it
+    // never asked. Nothing automated caught it: the endpoint is correct and
+    // well covered, and no test rendered the row and clicked it.
+    //
+    // The name is looked up here instead. An attribute that carries only
+    // numbers cannot be broken by punctuation in somebody's data.
+    async deleteAccount(id) {
+        let name = `account ${id}`;
+        try {
+            name = (await API.get(`/accounts/${id}`)).name || name;
+        } catch (err) { /* fall back to the id in the prompt */ }
         // Deleting is for an account that was never used. Anything with
         // history, or anything the books resolve by number, is refused by
         // the server with a reason — deactivating is the answer there.

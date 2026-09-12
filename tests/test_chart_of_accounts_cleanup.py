@@ -187,6 +187,13 @@ def test_the_page_offers_deactivate_reactivate_and_delete():
     )
     assert "setAccountActive(" in js
     assert "deleteAccount(" in js
+    # These assert the call EXISTS, which is what let the 2.12.0 gate's HIGH
+    # through: the Delete handler was in the source and the markup around it
+    # did not parse, so the button never fired. A test of a string is not a
+    # test of a document — see tests/test_onclick_attributes_parse.py.
+    assert (
+        "JSON.stringify" not in js.split("renderAccounts()")[1].split("saveAccount")[0]
+    ), "a stringified value in the accounts row markup again"
     assert "API.del(" in js, "API exposes del(), not delete()"
     # A deactivated account must stay reachable, or deactivating is one-way.
     assert "_showInactiveAccounts" in js
