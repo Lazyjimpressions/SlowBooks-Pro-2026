@@ -51,91 +51,42 @@ Details, known gaps and how to report a barrier:
 
 ## What's New
 
-**v2.10 — The bank register is the ledger.** A payment typed into a
-checking account's register now moves that account in the general ledger,
-because the register *is* the ledger: bank and credit-card accounts are
-flagged on the chart, the register is that account's posted lines with a
-running balance, and every document you post — expense, deposit, bill
-payment, payroll — appears in it. Statement lines from a feed or an import
-no longer post silently; each one looks for the entry you already made and
-matches it, and the rest wait in **To review** until you add them with a
-category, match them by hand, or exclude them. Transfers are a document, so
-paying a credit card is a transfer and the amount owed falls. Reconciliation
-ticks ledger lines and locks what it closed. Upgrading a file keeps its old
-register balance and shows it once, to post as an opening balance or
-dismiss — the upgrade itself writes nothing to your ledger. Guide:
-[docs/banking.md](docs/banking.md).
+**v2.13 — Your words, and a file the bank produced.** Every message the
+server sends now uses your company's words: a nonprofit's Pledge screen
+used to say "Invoice not found" under it. And what you post is written in
+the document's own words — a pledge posts as Pledge, a program-fee invoice
+stays Invoice, and the ledger, the covering email and the printed page
+agree. Existing entries keep the words they were posted with. Plus **Bank
+of America detail CSV import**, contributed by @Lazyjimpressions and held
+back a day until a fixture derived from real exports arrived; a working
+**QuickBooks Online connection** again, contributed by
+@CimarronSiteServices; and a startup repair a frozen build can actually
+run.
 
-Also in 2.10: **PDF receipts scan on Windows and macOS with nothing to
-install** (the operating system renders the page; poppler-utils is the Linux
-path), and the cash flow statement now follows the journals that actually
-move cash.
+**v2.12 — Your chart, your templates, your clipboard.** Delete or
+deactivate the forty-two ordinary accounts in the seeded chart (the fifteen
+the posting code finds by number stay, and can be renamed); preview an
+email template edit against a real invoice before saving it, and see what
+came out blank and why (@mdornich); every Copy button works on a LAN
+address, not only on localhost. Also a security fix: an editable email
+template could read decrypted settings secrets
+([GHSA-c3v4-f43f-4wqm](https://github.com/VonHoltenCodes/SlowBooks-Pro-2026/security/advisories/GHSA-c3v4-f43f-4wqm),
+reported by @mdornich).
 
-**v2.9 — Nonprofit mode.** One switch in Settings and a church, a club, a
-PTO or a community arts group sees its own words — donors, pledges,
-donations, funds, grants — and gets the documents every treasurer and
-auditor asks for: net assets by restriction with a release-from-restriction
-document, the Statement of Activities and Statement of Financial Position,
-fund balances, a Statement of Functional Expenses fed by allocation rules
-that split rent and wages across program / management / fundraising, donor
-acknowledgments with the IRS language, in-kind gifts, pledge tracking with
-write-offs, and year-end giving statements. Everything reconciles to the
-P&L and balance sheet to the cent. Guide:
-[docs/nonprofit-module.md](docs/nonprofit-module.md).
+**v2.11 — Record a credit from a supplier.** Vendor credits with
+application against bills, a void that reverses; and unapplied customer
+and vendor credits now show in the A/R and A/P agings, which had been
+reporting 1,000 owed where the ledger said 700. The Wave importer, which
+reported BALANCED because every row had parsed as zero, imports real files
+(@rchanks).
+
+Full history, with the reasoning behind each change, in
+**[CHANGELOG.md](CHANGELOG.md)**; the same entries with the test count
+per release at [slowbookspro.com/changelog](https://www.slowbookspro.com/changelog/).
 
 ![Nonprofit mode on macOS and Windows: the Company Snapshot in donor words, the Statement of Functional Expenses, the Statement of Activities compared to prior year, Releases from Restriction, the Report Center in dark theme, and a Pledge Report PDF](screenshots/nonprofit-grid.png)
 
-**v2.7 — Jobs, job costing, and receipt intake.** QuickBooks-style
-Customer:Job on every form and every posted line, nested cost codes with
-cost types and burden, Job Cost Entries for labor / equipment / mileage /
-overhead, time posted to jobs at loaded rates, budgets seeded from
-estimates, and a job page that drills from cost type to code to the
-posted line with Budget / Committed / Actual / Projected / Variance — the
-columns contractors already read. QuickBooks `Customer:Job` and Online
-sub-customers import as jobs. Plus **receipt intake**: scan a receipt
-photo or PDF into a Bill, Expense or Sales Receipt with a box-to-fix
-canvas, using the OCR engine built into macOS and Windows (Tesseract on
-Linux). Design notes: [docs/design/projects.md](docs/design/projects.md).
-
-**v2.6 — Sales receipts.** Point-of-sale style sales on one screen: the
-sale and its payment recorded together, deposited where you say, posted
-atomically — and kept on their own page so they don't clutter your
-invoices. Your existing receipt history imports too: `CASH SALE` blocks
-from QuickBooks Desktop IIF files and the SalesReceipt entity over the
-QuickBooks Online connection, with a migration guide covering both paths
-([docs/migrate-from-quickbooks.md](docs/migrate-from-quickbooks.md)).
-Built because a user asked for it.
-
-**v2.5 — Server Edition.** The same signed installer can serve your whole
-office from one Windows PC: users with roles (admin / bookkeeper /
-read-only), username logins, per-user audit attribution, and a startup
-task that has the books serving before anyone logs in — everyone else
-just needs a browser. An edition is a state, not a SKU: add a second user
-and you've promoted yourself, free either way. Field-verified on real
-office hardware before release. See
-**[docs/server-edition.md](docs/server-edition.md)**.
-
-v2.5 also debuts the **signed & notarized Apple Silicon macOS app**
-(maintained by [@ContractorKeith](https://github.com/ContractorKeith)) —
-a native `.app` in a DMG, no Docker or Python required.
-
-![Server Edition: LAN-served dashboard and user management](screenshots/server-edition-grid.png)
-
-**v2.4 — Bank feeds & the AI-ready API.** Automatic transaction sync via
-[SimpleFIN](https://www.simplefin.org/) — you hold the bank credential,
-no middleman server, dedup + bank rules on arrival
-([docs/setup-bank-feeds.md](docs/setup-bank-feeds.md)). Every install
-also serves a self-documenting local REST API (499 operations in v2.10); point
-Claude Code or any agentic CLI at it —
-[slowbookspro.com/ai](https://www.slowbookspro.com/ai/) has the
-paste-prompt.
-
-**v2.3 — Migrate from anywhere.** One Migrate Data page for Xero, MYOB,
-Sage 50, Wave, Zoho Books, and GnuCash — every import dry-run-verified
-against your trial balance before a single record is written, with
-opening balances posted automatically.
-
-Full history in **[CHANGELOG.md](CHANGELOG.md)**.
+*Nonprofit mode: one switch in Settings, and a church, a club or a PTO sees its own words on every screen and every printed page.*
 
 ---
 
@@ -151,8 +102,10 @@ Not a watermark — a verification trail.
 against any of eight providers (xAI Grok, Groq, Cloudflare Workers AI,
 Anthropic Claude, OpenAI, Google Gemini, a Cloudflare Worker you host
 yourself, or any OpenAI-compatible endpoint you name) — keys encrypted at rest with versioned, rotatable ciphertext.
-And the whole app is agent-operable through its local API: see the
-[AI setup guide](https://www.slowbookspro.com/ai/).
+And the whole app is agent-operable: every install serves a
+self-documenting local REST API (506 operations in v2.13) — point Claude
+Code or any agentic CLI at it; the
+[AI setup guide](https://www.slowbookspro.com/ai/) has the paste-prompt.
 
 **One-click reseller-permit verification.** Per-state format validation
 (WA/CA/TX), one click opens the state's official lookup, and the
@@ -167,7 +120,7 @@ mid-feature. Release images gate on the same check in CI.
 
 ## What it does
 
-Full catalog (300+ entries) in **[docs/features.md](docs/features.md)**. Highlights:
+Full catalog in **[docs/features.md](docs/features.md)**. Highlights:
 
 - **Accounts receivable** — invoices, estimates, payments with
   multi-invoice allocation, credit memos, recurring schedules, batch
@@ -190,7 +143,15 @@ Full catalog (300+ entries) in **[docs/features.md](docs/features.md)**. Highlig
 - **Analytics + AI** — 8 live metrics, 90-day cash forecast, optional
   BYOK insights
 - **Server Edition** — users, roles, attributed audit trail, serves the
-  office from one PC ([docs/server-edition.md](docs/server-edition.md))
+  office from one PC, built into the same signed installer
+  ([docs/server-edition.md](docs/server-edition.md))
+- **Bank feeds** — [SimpleFIN](https://www.simplefin.org/): you hold the
+  bank credential, no middleman server
+  ([docs/setup-bank-feeds.md](docs/setup-bank-feeds.md))
+- **Jobs & job costing** — Customer:Job on every form, cost codes and
+  types with burden, time posted at loaded rates, budget vs actual
+- **Receipt intake** — scan a photo or PDF into a Bill, Expense or Sales
+  Receipt with the OCR built into macOS and Windows (Tesseract on Linux)
 - **Online payments** — [Stripe](docs/setup-stripe.md),
   [PayPal](docs/setup-paypal.md), [Square](docs/setup-square.md) behind
   one abstraction, desktop-mode recording included
@@ -200,9 +161,12 @@ Full catalog (300+ entries) in **[docs/features.md](docs/features.md)**. Highlig
   Sage 50 / Wave / Zoho Books / GnuCash, Opening Balances wizard
 - **Fixed assets** — register, depreciation runs, disposal with
   gain/loss, reconciliation report
-- **Nonprofit mode** — funds with restrictions, releases, functional
-  expenses, donor acknowledgments, giving statements, pledges
+- **Nonprofit mode** — your own words on every screen and document; funds
+  with restrictions, releases, functional expenses, donor acknowledgments,
+  giving statements, pledges
   ([docs/nonprofit-module.md](docs/nonprofit-module.md))
+- **Accessibility** — WCAG 2.1 AA, tagged PDFs
+  ([docs/accessibility.md](docs/accessibility.md))
 - **Duplicate detection** — fuzzy customer/vendor matching at create time
 
 ![Company Snapshot in light and dark themes](screenshots/hero-themes.png)
@@ -211,6 +175,10 @@ Full catalog (300+ entries) in **[docs/features.md](docs/features.md)**. Highlig
 
 ![Invoicing, analytics, inventory, and duplicate detection](screenshots/features-grid.png)
 
+![Server Edition: LAN-served dashboard and user management](screenshots/server-edition-grid.png)
+
+*Server Edition: an edition is a state, not a SKU — add a second user and you've promoted yourself, free either way.*
+
 ---
 
 ## Quick Start
@@ -218,8 +186,10 @@ Full catalog (300+ entries) in **[docs/features.md](docs/features.md)**. Highlig
 ### Windows — signed installer
 
 Download **[SlowBooksPro-Setup-x64.exe](https://github.com/VonHoltenCodes/SlowBooks-Pro-2026/releases/latest/download/SlowBooksPro-Setup-x64.exe)**
-and double-click. Fully self-contained (64-bit Windows 10/11); portable
-.zip on the [releases page](https://github.com/VonHoltenCodes/SlowBooks-Pro-2026/releases/latest).
+and double-click. Fully self-contained (64-bit Windows 10/11); a portable
+.zip is on the [releases page](https://github.com/VonHoltenCodes/SlowBooks-Pro-2026/releases/latest)
+— it needs the Microsoft Edge WebView2 runtime, which Windows 11 has and the
+installer sets up; without it the app offers to open in your browser instead.
 Each company is one SQLite file under `%LOCALAPPDATA%\SlowBooksPro` —
 upgrades and even uninstalls never touch your books.
 
@@ -231,8 +201,9 @@ startup task, and machine-wide data location handled. Details in
 ### macOS — signed Apple Silicon app
 
 Download **[SlowBooksPro-macos-arm64.dmg](https://github.com/VonHoltenCodes/SlowBooks-Pro-2026/releases/latest/download/SlowBooksPro-macos-arm64.dmg)**,
-drag **SlowBooks Pro** to Applications, launch. Signed and notarized;
-macOS 14+. Intel Macs: use Docker until a tested Intel build ships.
+drag **SlowBooks Pro** to Applications, launch. Signed and notarized with
+the project's Apple Developer ID on every release; macOS 14+, Apple
+Silicon. Intel Macs: Docker.
 
 ### Docker (Linux servers, Intel Mac)
 
@@ -275,6 +246,11 @@ Production checklist: **[docs/release-checklist.md](docs/release-checklist.md)**
 | [docs/security-hardening.md](docs/security-hardening.md) | Security pass — what changed, why, how it's tested |
 | [docs/hipaa-compliance.md](docs/hipaa-compliance.md) | HIPAA mapping — honest gap list included |
 | [docs/wiring-audit.md](docs/wiring-audit.md) | Frontend ↔ backend drift audit methodology |
+| [docs/banking.md](docs/banking.md) | The register is the ledger: entries, feeds as a review queue, transfers, reconciliation |
+| [docs/nonprofit-module.md](docs/nonprofit-module.md) | Nonprofit mode: funds, restrictions, functional expenses, donor documents |
+| [docs/accessibility.md](docs/accessibility.md) | WCAG 2.1 AA conformance, known gaps, how to report a barrier |
+| [docs/migrate-from-quickbooks.md](docs/migrate-from-quickbooks.md) | QuickBooks Desktop (IIF) and Online migration, sales receipts included |
+| [docs/state-withholding.md](docs/state-withholding.md) | State income-tax withholding tables and their sources |
 | [docs/setup-bank-feeds.md](docs/setup-bank-feeds.md) | SimpleFIN bank feeds |
 | [docs/setup-qbo.md](docs/setup-qbo.md) · [Stripe](docs/setup-stripe.md) · [PayPal](docs/setup-paypal.md) · [Square](docs/setup-square.md) | Integrations |
 | [docs/migrate-from-myob.md](docs/migrate-from-myob.md) | MYOB migration walkthrough |
@@ -322,7 +298,8 @@ offer it as a paid service. Full terms in [LICENSE](LICENSE).
 ## Contributors
 
 - [VonHoltenCodes](https://github.com/VonHoltenCodes) — creator and maintainer
-- [Keith (@ContractorKeith)](https://github.com/ContractorKeith) — macOS maintainer
+- [Keith (@ContractorKeith)](https://github.com/ContractorKeith) — macOS testing and review
 
-Everyone who has contributed is credited in the [CHANGELOG](CHANGELOG.md) and
-the git history.
+Maintainers by platform are in [CONTRIBUTING.md](CONTRIBUTING.md). Everyone
+who has contributed is credited in the [CHANGELOG](CHANGELOG.md) entry that
+shipped their work and in the git history.
