@@ -11,6 +11,7 @@ import stripe
 
 from app.models.invoices import Invoice
 from app.services.payments.base import CheckoutSession, PaymentProvider, PaymentResult
+from app.services.terminology import document_reference, terms_for
 
 
 class StripeProvider(PaymentProvider):
@@ -30,6 +31,9 @@ class StripeProvider(PaymentProvider):
     def create_checkout(
         self, invoice: Invoice, settings: Mapping[str, str], base_url: str
     ) -> CheckoutSession:
+        # what the payer sees on the hosted page; the ids and metadata
+        # the webhook resolves by are untouched
+        terms = terms_for(settings)
         stripe.api_key = settings["stripe_secret_key"]
         amount_cents = int(Decimal(str(invoice.balance_due)) * 100)
 
@@ -45,8 +49,12 @@ class StripeProvider(PaymentProvider):
                     "price_data": {
                         "currency": "usd",
                         "product_data": {
-                            "name": f"Invoice #{invoice.invoice_number}",
-                            "description": f"Payment for invoice #{invoice.invoice_number}",
+                            "name": document_reference(
+                                terms, "Invoice", invoice.invoice_number
+                            ),
+                            "description": terms.text(
+                                f"Payment for invoice #{invoice.invoice_number}"
+                            ),
                         },
                         "unit_amount": amount_cents,
                     },

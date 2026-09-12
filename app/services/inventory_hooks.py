@@ -40,6 +40,9 @@ def post_sale_for_invoice(db: Session, invoice, txn_date=None) -> None:
     """
     date_to_use = txn_date or invoice.date
     ref = getattr(invoice, "invoice_number", None) or f"inv#{invoice.id}"
+    from app.services.terminology import terms_from_db
+
+    terms = terms_from_db(db)
     for line in invoice.lines:
         item = _get_item(db, line.item_id)
         if item and item.track_inventory:
@@ -49,7 +52,7 @@ def post_sale_for_invoice(db: Session, invoice, txn_date=None) -> None:
                 quantity=Decimal(str(line.quantity)),
                 source_type="invoice",
                 source_id=invoice.id,
-                memo=f"Invoice {ref}",
+                memo=terms.text(f"Invoice {ref}"),
                 txn_date=date_to_use,
             )
 

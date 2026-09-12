@@ -29,6 +29,7 @@ from app.routes.invoices.helpers import (
     _build_invoice_journal_lines,
     _reverse_and_delete_journal,
 )
+from app.services.terminology import document_reference, terms_from_db
 
 
 @router.get("", response_model=list[InvoiceResponse])
@@ -90,6 +91,7 @@ def _check_fair_value(fair_value_amount, total) -> None:
 
 @router.post("", response_model=InvoiceResponse, status_code=201)
 def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
+    words = terms_from_db(db)
     check_closing_date(db, data.date)
     customer = db.query(Customer).filter(Customer.id == data.customer_id).first()
     if not customer:
@@ -208,7 +210,7 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
                 "account_id": ar_id,
                 "debit": Decimal(str(total)),
                 "credit": Decimal("0"),
-                "description": f"Invoice #{invoice_number}",
+                "description": document_reference(words, "Invoice", invoice_number),
             }
         )
         # Credit income for each line (use item's income account or default).
@@ -250,7 +252,7 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
         txn = create_journal_entry(
             db,
             data.date,
-            f"Invoice #{invoice_number} - {cust_name}",
+            document_reference(words, "Invoice", invoice_number, cust_name),
             convert_lines(journal_lines, doc_rate),
             source_type="invoice",
             source_id=invoice.id,
@@ -277,7 +279,7 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
                 quantity=Decimal(str(line_data.quantity)),
                 source_type="invoice",
                 source_id=invoice.id,
-                memo=f"Invoice #{invoice_number}",
+                memo=document_reference(words, "Invoice", invoice_number),
                 txn_date=data.date,
             )
 
@@ -396,7 +398,12 @@ def update_invoice(invoice_id: int, data: InvoiceUpdate, db: Session = Depends(g
                     .first()
                 )
                 if txn:
-                    txn.description = f"Invoice #{invoice.invoice_number} - {invoice.customer.name if invoice.customer else ''}"
+                    txn.description = document_reference(
+                        terms_from_db(db),
+                        "Invoice",
+                        invoice.invoice_number,
+                        invoice.customer.name if invoice.customer else "",
+                    )
                 for jl in new_journal_lines:
                     debit = Decimal(str(jl.get("debit", 0)))
                     credit = Decimal(str(jl.get("credit", 0)))

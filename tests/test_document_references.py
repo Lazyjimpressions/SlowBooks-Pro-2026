@@ -1,0 +1,233 @@
+"""What a posting writes for itself, in the company's words — and the guard
+that says none of it is ever read back.
+
+The vocabulary audit's walk found fourteen sites composing "Invoice #1081 -
+Boise Neon Supply" into stored ledger descriptions, an inventory memo and
+the Stripe, Square and PayPal line items a payer sees. That is data by the
+time it is displayed, so no render-time swap can reach it. The words are
+chosen once, at posting time, through one helper; history keeps the words
+in use when it was posted; and the integrations key on ids and metadata,
+never on the text — which these tests pin, because that is the promise
+that lets the words change at all.
+"""
+
+import re
+from pathlib import Path
+
+from tests.test_payment_providers import SETTINGS as PROVIDER_SETTINGS
+from tests.test_square_provider import SETTINGS as SQUARE_SETTINGS
+from tests.test_square_provider import _invoice as square_invoice
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _customer(client, name="Boise Neon Supply"):
+    r = client.post("/api/customers", json={"name": name})
+    assert r.status_code in (200, 201), r.text
+    return r.json()["id"]
+
+
+def _invoice(client, cid, amount=250, date="2026-03-01"):
+    r = client.post(
+        "/api/invoices",
+        json={
+            "customer_id": cid,
+            "date": date,
+            "tax_rate": 0,
+            "lines": [
+                {"description": "x", "quantity": 1, "rate": amount, "line_order": 0}
+            ],
+        },
+    )
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _ledger_rows(client, invoice_number):
+    gl = client.get("/api/reports/general-ledger").json()
+    text = str(gl)
+    return [
+        m
+        for m in re.findall(r"'description': '([^']*)'", text)
+        if str(invoice_number) in m
+    ]
+
+
+def test_business_postings_keep_their_words(client, seed_accounts):
+    inv = _invoice(client, _customer(client))
+    rows = _ledger_rows(client, inv["invoice_number"])
+    assert rows and all(
+        r == f"Invoice #{inv['invoice_number']} - Boise Neon Supply" for r in rows
+    ), rows
+
+
+def test_a_nonprofit_posts_a_pledge(client, seed_accounts):
+    client.put("/api/settings", json={"company_type": "nonprofit"})
+    inv = _invoice(client, _customer(client, "Grant Foundation"))
+    rows = _ledger_rows(client, inv["invoice_number"])
+    assert rows and all(
+        r == f"Pledge #{inv['invoice_number']} - Grant Foundation" for r in rows
+    ), rows
+
+
+def test_editing_keeps_the_company_words(client, seed_accounts):
+    client.put("/api/settings", json={"company_type": "nonprofit"})
+    inv = _invoice(client, _customer(client, "Grant Foundation"))
+    r = client.put(
+        f"/api/invoices/{inv['id']}",
+        json={
+            "lines": [{"description": "y", "quantity": 2, "rate": 100, "line_order": 0}]
+        },
+    )
+    assert r.status_code == 200, r.text
+    rows = _ledger_rows(client, inv["invoice_number"])
+    assert rows and all("Pledge #" in row for row in rows), rows
+
+
+def test_history_keeps_the_words_it_was_posted_with(client, seed_accounts):
+    """Nothing rewrites the ledger. A company that becomes a nonprofit keeps
+    "Invoice #" on what it posted as a business, and posts "Pledge #" from
+    then on. The two coexist, and that is the documented behaviour."""
+    old = _invoice(client, _customer(client), date="2026-01-10")
+    client.put("/api/settings", json={"company_type": "nonprofit"})
+    new = _invoice(client, _customer(client, "Grant Foundation"), date="2026-02-10")
+    assert any(
+        r.startswith("Invoice #") for r in _ledger_rows(client, old["invoice_number"])
+    )
+    assert any(
+        r.startswith("Pledge #") for r in _ledger_rows(client, new["invoice_number"])
+    )
+
+
+def test_estimate_conversion_and_reissue_use_the_same_helper():
+    """Every site goes through document_reference — a grep, so a new site
+    written as f"Invoice #{n}" fails here before it reaches a nonprofit."""
+    offenders = []
+    for path in list((ROOT / "app/routes").rglob("*.py")) + list(
+        (ROOT / "app/services").rglob("*.py")
+    ):
+        if "iif_import" in path.name or "checks.py" in path.name:
+            continue  # QuickBooks interop keeps QuickBooks' words; a vendor's invoice is an invoice
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if (
+                re.search(r'f"(Invoice|Sales Receipt) #\{', line)
+                and "HTTPException" not in line
+                and "detail=" not in line
+            ):
+                offenders.append(f"{path.relative_to(ROOT)}:{n}: {line.strip()[:80]}")
+    assert offenders == [], "\n".join(offenders)
+
+
+# ---------------------------------------------------------------------------
+# The guard: integrations key on ids and metadata, never on the words
+# ---------------------------------------------------------------------------
+
+NONPROFIT_SETTINGS = {**PROVIDER_SETTINGS, "company_type": "nonprofit"}
+
+
+def test_square_link_says_pledge_and_keeps_every_key():
+    from app.services.payments import square as sq
+
+    biz = sq.build_payment_link_request(
+        square_invoice(), SQUARE_SETTINGS, "https://b.example", "idem"
+    )
+    npo = sq.build_payment_link_request(
+        square_invoice(),
+        {**SQUARE_SETTINGS, "company_type": "nonprofit"},
+        "https://b.example",
+        "idem",
+    )
+    assert biz["json"]["quick_pay"]["name"] == "Invoice #INV-1042"
+    assert npo["json"]["quick_pay"]["name"] == "Pledge #INV-1042"
+    assert npo["json"]["payment_note"] == "Pledge #INV-1042"
+    # everything the webhook and the order lookup rely on is identical
+    for k in ("idempotency_key", "checkout_options"):
+        assert biz["json"][k] == npo["json"][k], k
+    assert (
+        biz["json"]["quick_pay"]["price_money"]
+        == npo["json"]["quick_pay"]["price_money"]
+    )
+    assert (
+        biz["json"]["quick_pay"]["location_id"]
+        == npo["json"]["quick_pay"]["location_id"]
+    )
+    assert biz["url"] == npo["url"] and biz["headers"] == npo["headers"]
+
+
+def test_paypal_order_says_pledge_and_keeps_its_ids():
+    from app.services.payments import paypal as pp
+
+    biz = pp.build_order_request(
+        square_invoice(), PROVIDER_SETTINGS, "https://b.example", "TOK"
+    )
+    npo = pp.build_order_request(
+        square_invoice(), NONPROFIT_SETTINGS, "https://b.example", "TOK"
+    )
+    b, n = biz["json"]["purchase_units"][0], npo["json"]["purchase_units"][0]
+    assert (
+        b["description"] == "Invoice #INV-1042"
+        and n["description"] == "Pledge #INV-1042"
+    )
+    # PayPal's own `invoice_id` field is a key, not a sentence; custom_id ties the order back
+    assert b["custom_id"] == n["custom_id"] == "42"
+    assert b["invoice_id"] == n["invoice_id"] == "INV-1042"
+    assert b["amount"] == n["amount"]
+    assert biz["json"]["application_context"] == npo["json"]["application_context"]
+
+
+def test_stripe_session_says_pledge_and_keeps_its_metadata(monkeypatch):
+    from app.services.payments import stripe as st
+
+    captured = {}
+
+    class _Session:
+        @staticmethod
+        def create(**kw):
+            captured.update(kw)
+
+            class _S:
+                id = "cs_test"
+                url = "https://checkout.stripe.test/cs_test"
+
+            return _S()
+
+    monkeypatch.setattr(st.stripe.checkout, "Session", _Session)
+    settings = {**NONPROFIT_SETTINGS, "stripe_secret_key": "sk_test"}
+    st.StripeProvider().create_checkout(square_invoice(), settings, "https://b.example")
+    product = captured["line_items"][0]["price_data"]["product_data"]
+    assert product["name"] == "Pledge #INV-1042"
+    assert product["description"] == "Payment for pledge #INV-1042"
+    assert captured["metadata"] == {"invoice_id": "42", "payment_token": "tok-abc"}
+
+
+def test_nothing_parses_a_description_for_the_document_words():
+    """The contract that lets the words change: descriptions, memos and
+    provider line items are display text. If any code ever keys on
+    "Invoice #" in one, this names it."""
+    offenders = []
+    for path in (ROOT / "app").rglob("*.py"):
+        if "state_tax" in str(path):
+            continue
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(
+            r"(description|memo|payment_note)[^\n]*(startswith|\.match\(|\.search\(|\bin\b)[^\n]*(Invoice|Pledge|Sales Receipt)",
+            text,
+        ):
+            offenders.append(f"{path.relative_to(ROOT)}: {m.group(0)[:100]}")
+        for m in re.finditer(r"[\"'](Invoice|Pledge) #[\"'] in ", text):
+            offenders.append(f"{path.relative_to(ROOT)}: {m.group(0)[:100]}")
+    assert offenders == [], "\n".join(offenders)
+
+
+def test_email_defaults_are_seeded_in_the_company_words(client):
+    client.put("/api/settings", json={"company_type": "nonprofit"})
+    r = client.post("/api/email-templates/seed-defaults")
+    assert r.status_code == 200, r.text
+    tpl = next(
+        t
+        for t in client.get("/api/email-templates").json()
+        if t["name"] == "invoice_email"
+    )
+    assert tpl["subject_template"].startswith("Pledge #{{ invoice.invoice_number }}")
+    assert "attached Pledge #" in tpl["body_template"]
+    assert "Invoice" not in tpl["subject_template"] + tpl["body_template"]

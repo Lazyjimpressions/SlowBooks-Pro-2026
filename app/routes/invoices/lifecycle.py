@@ -26,6 +26,7 @@ from app.services.settings_service import get_all_settings as get_settings
 from app.services.closing_date import check_closing_date
 
 from app.routes.invoices._router import router
+from app.services.terminology import document_reference, terms_from_db
 
 
 @router.post("/{invoice_id}/void", response_model=InvoiceResponse)
@@ -328,7 +329,8 @@ def write_off_invoice(
     txn = create_journal_entry(
         db,
         data.date,
-        f"Credit Memo {cm.memo_number} - write-off of Invoice #{inv.invoice_number}",
+        f"Credit Memo {cm.memo_number} - write-off of "
+        + document_reference(terms_from_db(db), "Invoice", inv.invoice_number),
         [
             {
                 "account_id": bad_debt_id,
@@ -363,6 +365,7 @@ def write_off_invoice(
 @router.post("/{invoice_id}/duplicate", response_model=InvoiceResponse, status_code=201)
 def duplicate_invoice(invoice_id: int, db: Session = Depends(get_db)):
     """Duplicate — copy the invoice under a new number."""
+    words = terms_from_db(db)
     original = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not original:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -436,7 +439,7 @@ def duplicate_invoice(invoice_id: int, db: Session = Depends(get_db)):
                 "account_id": ar_id,
                 "debit": Decimal(str(new_invoice.total)),
                 "credit": Decimal("0"),
-                "description": f"Invoice #{new_number}",
+                "description": document_reference(words, "Invoice", new_number),
             }
         )
         # Credit income for each line
@@ -472,7 +475,9 @@ def duplicate_invoice(invoice_id: int, db: Session = Depends(get_db)):
         txn = create_journal_entry(
             db,
             today,
-            f"Invoice #{new_number} - {customer.name if customer else ''}",
+            document_reference(
+                words, "Invoice", new_number, customer.name if customer else ""
+            ),
             journal_lines,
             source_type="invoice",
             source_id=new_invoice.id,

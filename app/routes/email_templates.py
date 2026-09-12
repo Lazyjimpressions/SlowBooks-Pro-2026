@@ -3,6 +3,8 @@
 # Phase 10: Quick Wins + Medium Effort Features
 # ============================================================================
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -196,16 +198,35 @@ def delete_template(template_id: int, db: Session = Depends(get_db)):
     return {"status": "deleted"}
 
 
+_JINJA_TAG = re.compile(r"(\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\})", re.S)
+
+
+def _prose_in_company_words(template_text: str, terms) -> str:
+    """Swap the words in the prose and leave every Jinja expression alone —
+    `{{ invoice.invoice_number }}` is a variable name, not a sentence, and
+    the first cut turned it into `{{ pledge.invoice_number }}`."""
+    parts = _JINJA_TAG.split(template_text)
+    return "".join(part if i % 2 else terms.text(part) for i, part in enumerate(parts))
+
+
 @router.post("/seed-defaults")
 def seed_defaults(db: Session = Depends(get_db)):
     """Create default email templates if they don't exist."""
+    from app.services.terminology import terms_from_db
+
+    # Seeded in the company's words: a nonprofit's saved, editable template
+    # should not open with "Invoice #" when every screen says Pledge.
+    terms = terms_from_db(db)
     created = 0
     for tpl in DEFAULT_TEMPLATES:
         existing = (
             db.query(EmailTemplate).filter(EmailTemplate.name == tpl["name"]).first()
         )
         if not existing:
-            db.add(EmailTemplate(**tpl))
+            worded = dict(tpl)
+            for field in ("subject_template", "body_template"):
+                worded[field] = _prose_in_company_words(tpl[field], terms)
+            db.add(EmailTemplate(**worded))
             created += 1
     db.commit()
     return {"created": created, "total_defaults": len(DEFAULT_TEMPLATES)}
