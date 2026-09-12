@@ -11,7 +11,8 @@ still carry a business word in nonprofit mode. A string that reads the
 same in both modes and exists verbatim in the source tree is a code leak;
 one that only exists in the data is a name somebody typed.
 
-    python3 scripts/audit/vocab_walk.py --base http://127.0.0.1:3777 --password neonpulse
+    SLOWBOOKS_QA_PASSWORD=<the scratch company's admin password> \\
+        python3 scripts/audit/vocab_walk.py --base http://127.0.0.1:3777
 
 Read-only by construction: GET routes, the 404 path of parameterised GET
 routes, the two preview endpoints, and PUT /api/settings for company_type
@@ -21,6 +22,7 @@ routes, the two preview endpoints, and PUT /api/settings for company_type
 from __future__ import annotations
 
 import argparse
+import os
 import html
 import http.cookiejar
 import json
@@ -326,12 +328,19 @@ def source_backed(literal: str, files: list[Path]) -> str | None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", required=True)
-    ap.add_argument("--password", default="neonpulse")
+    ap.add_argument(
+        "--password",
+        default=os.environ.get("SLOWBOOKS_QA_PASSWORD"),
+        help="the scratch company's admin password; prefer SLOWBOOKS_QA_PASSWORD "
+        "in the environment so it never lands in a shell history or a commit",
+    )
     ap.add_argument(
         "--out", type=Path, default=ROOT / "scripts/audit/vocab_walk_report.json"
     )
     args = ap.parse_args()
 
+    if not args.password:
+        ap.error("no password: pass --password or set SLOWBOOKS_QA_PASSWORD")
     c = Client(args.base)
     status, body = c.json("POST", "/api/auth/login", {"password": args.password})
     assert status == 200, f"login: {status} {body}"
