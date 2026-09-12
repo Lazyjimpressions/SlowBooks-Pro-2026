@@ -1001,6 +1001,111 @@ def _webview2_installed() -> bool:
     return False
 
 
+WEBVIEW2_URL = "https://developer.microsoft.com/microsoft-edge/webview2/"
+WINDOWS_INSTALLER = "SlowBooksPro-Setup-x64.exe"
+
+
+def _no_webview2_message() -> str:
+    """What to tell someone whose machine has no WebView2 runtime.
+
+    Issue #149: the portable zip carries no bootstrapper (the installer
+    does), so this is the first thing a user of it sees on a fresh
+    Windows image. The old text ended "python desktop_launcher.py
+    --no-window" — an instruction the installed build cannot follow,
+    because it has no Python and no such file. Sixth appearance of that
+    class. The frozen build is told the two things it CAN do.
+    """
+    if FROZEN:
+        return (
+            "SlowBooks Pro needs the Microsoft Edge WebView2 runtime to show "
+            "its window, and this computer does not have it.\n"
+            "\n"
+            "Two ways to fix that:\n"
+            f"  1. Install the runtime from Microsoft: {WEBVIEW2_URL}\n"
+            f"  2. Or install SlowBooks Pro with its installer, {WINDOWS_INSTALLER}, "
+            "which sets the runtime up for you.\n"
+        )
+    return (
+        "The Microsoft WebView2 runtime is not installed, so the app window "
+        "cannot open properly.\n"
+        f"Install it from: {WEBVIEW2_URL}\n"
+        "You can also start without a native window:\n"
+        "    python desktop_launcher.py --no-window"
+    )
+
+
+def _ask_yes_no(message: str, title: str = "SlowBooks Pro 2026") -> bool:
+    """A native Yes/No box (Windows only; False anywhere it cannot ask)."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        MB_YESNO, MB_ICONWARNING, IDYES = 0x4, 0x30, 6
+        return (
+            ctypes.windll.user32.MessageBoxW(
+                0, message, title, MB_YESNO | MB_ICONWARNING
+            )
+            == IDYES
+        )
+    except Exception:
+        return False
+
+
+def _hold_until_dismissed(message: str, title: str = "SlowBooks Pro 2026") -> None:
+    """Block on a native OK box (Windows); elsewhere, wait for Ctrl+C."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            MB_ICONINFORMATION = 0x40
+            ctypes.windll.user32.MessageBoxW(0, message, title, MB_ICONINFORMATION)
+            return
+        except Exception:
+            pass
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        pass
+
+
+def _run_without_webview2(port: int, log_fh=None) -> int:
+    """The window cannot open. Say why in terms the reader can act on and,
+    on Windows, offer the one thing that works without the runtime: the
+    app in the system browser, held open by a box the user closes to
+    stop it. Verified by unit test with a fake registry; the end-to-end
+    on a machine with the runtime genuinely absent needs a scratch VM
+    (issue #149) and is recorded as uncovered, not as passed."""
+    msg = _no_webview2_message()
+    print(msg)
+    if not _ask_yes_no(msg + "\nOpen SlowBooks Pro in your web browser instead?"):
+        _show_error_box(msg)
+        return 1
+    return run_in_browser(port, log_fh)
+
+
+def run_in_browser(port: int, log_fh=None) -> int:
+    """Serve on loopback and open the system browser on it."""
+    import webbrowser
+
+    proc = _start_default_company(port, output=log_fh)
+    if proc is None:
+        return 1
+    url = f"http://127.0.0.1:{port}"
+    print(f"SlowBooks Pro is running at {url}")
+    webbrowser.open(url)
+    try:
+        _hold_until_dismissed(
+            f"SlowBooks Pro is open in your web browser at {url}\n"
+            "\n"
+            "Keep this box open while you work. Click OK to stop SlowBooks Pro."
+        )
+    finally:
+        stop_server(proc)
+    return 0
+
+
 def _show_error_box(message: str) -> None:
     """Best-effort native popup for fatal errors -- used in --hidden mode,
     where there's no visible console to print to. No-op on unsupported
@@ -1097,17 +1202,7 @@ def run_window(port: int, log_fh=None) -> int:
         return 1
 
     if not _webview2_installed():
-        msg = (
-            "The Microsoft WebView2 runtime is not installed, so the app\n"
-            "window cannot open properly.\n"
-            "Install it from:\n"
-            "    https://developer.microsoft.com/microsoft-edge/webview2/\n"
-            "You can also start without a native window:\n"
-            "    python desktop_launcher.py --no-window"
-        )
-        print(msg)
-        _show_error_box(msg)
-        return 1
+        return _run_without_webview2(port, log_fh)
 
     # pywebview CANCELS downloads by default -- without this, saving a PDF,
     # a CSV export, or a backup from inside the app silently does nothing.
@@ -1207,7 +1302,11 @@ def _lan_addresses() -> list[str]:
     return seen
 
 
-def run_headless(port: int, bind_host: str = "127.0.0.1") -> int:
+def _start_default_company(
+    port: int, bind_host: str = "127.0.0.1", output=None
+) -> subprocess.Popen | None:
+    """Open the last-used company (or the first, or a new one) and start
+    the server for it. None, with the reason printed, if that fails."""
     from app.services import company_service
 
     filename = company_service.get_last_opened()
@@ -1220,14 +1319,22 @@ def run_headless(port: int, bind_host: str = "127.0.0.1") -> int:
             result = company_service.manifest_create_company("My Company")
             if not result["success"]:
                 print(f"ERROR: {result['error']}")
-                return 1
+                return None
             filename = result["file"]
 
     print(f"Opening company file: {filename}")
     try:
-        proc = launch_company(filename, port, bind_host=bind_host, persist=False)
+        return launch_company(
+            filename, port, bind_host=bind_host, persist=False, output=output
+        )
     except (ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
         print(f"ERROR: {exc}")
+        return None
+
+
+def run_headless(port: int, bind_host: str = "127.0.0.1") -> int:
+    proc = _start_default_company(port, bind_host)
+    if proc is None:
         return 1
 
     if bind_host == "127.0.0.1":
@@ -1279,6 +1386,108 @@ def _watch_parent(parent_pid: int, poll_seconds: float = 2.0) -> None:
     threading.Thread(target=_poll, daemon=True, name="parent-watch").start()
 
 
+def _win32_dlls():
+    """The three Windows DLLs the timer code needs; a seam for tests."""
+    import ctypes
+
+    return ctypes.windll.winmm, ctypes.windll.kernel32, ctypes.windll.ntdll
+
+
+def _timer_resolution_ms(ntdll) -> float | None:
+    """The current system timer resolution, from NtQueryTimerResolution
+    (100-ns units), or None if it cannot be read."""
+    import ctypes
+
+    # ULONG is 32 bits on Windows; c_uint32 says so on every platform
+    lo, hi, cur = ctypes.c_uint32(), ctypes.c_uint32(), ctypes.c_uint32()
+    try:
+        if (
+            ntdll.NtQueryTimerResolution(
+                ctypes.byref(lo), ctypes.byref(hi), ctypes.byref(cur)
+            )
+            != 0
+        ):
+            return None
+    except Exception:
+        return None
+    return cur.value / 10_000
+
+
+def raise_timer_resolution(period_ms: int = 1):
+    """Windows: serve with a 1 ms timer instead of the 15.625 ms default.
+
+    Issue #107 (skytech, 2.9.3 gate): about half of all requests on Windows
+    waited exactly one scheduler tick — a trivial /health cost the same as
+    a full invoice write, and the histogram had a second peak on 15.625 ms.
+    A request bounces between the event loop and a worker thread (every
+    sync route, every SQLite call that releases the GIL), and each hand-off
+    is a timed wait that Windows rounds up to the tick. timeBeginPeriod(1)
+    is the documented fix and is what browsers do while active.
+
+    Two things the docs say that matter here. Since Windows 10 2004 the
+    request is per-process, so it has to be made in THIS process — the
+    server child — not the launcher. And Windows 11 ignores the request
+    from a process with no visible window unless it opts out with
+    SetProcessInformation, which is exactly what a --_serve child is.
+
+    Returns a function that undoes it (timeEndPeriod must be matched).
+    The log line names the resolution before and after, so a gate can
+    confirm the request took effect rather than assume it. The cost is
+    a little power while serving; the request ends with the process.
+    """
+    if sys.platform != "win32":
+        return lambda: None
+    try:
+        import ctypes
+
+        winmm, kernel32, ntdll = _win32_dlls()
+    except Exception:
+        return lambda: None
+
+    before = _timer_resolution_ms(ntdll)
+    try:
+        # PROCESS_POWER_THROTTLING_STATE { Version=1, ControlMask, StateMask }
+        # ControlMask selects IGNORE_TIMER_RESOLUTION (0x4); StateMask 0
+        # turns that throttling OFF — "always honor timer resolution
+        # requests", per the SetProcessInformation reference. Fails
+        # harmlessly (returns 0) on Windows 10, which has no such throttle.
+        class _PowerThrottling(ctypes.Structure):
+            _fields_ = [
+                ("Version", ctypes.c_uint32),
+                ("ControlMask", ctypes.c_uint32),
+                ("StateMask", ctypes.c_uint32),
+            ]
+
+        state = _PowerThrottling(1, 0x4, 0)
+        kernel32.SetProcessInformation(
+            kernel32.GetCurrentProcess(),
+            4,  # ProcessPowerThrottling
+            ctypes.byref(state),
+            ctypes.sizeof(state),
+        )
+    except Exception:
+        pass
+
+    try:
+        if winmm.timeBeginPeriod(period_ms) != 0:  # TIMERR_NOCANDO
+            print(f"timer resolution: request for {period_ms} ms refused")
+            return lambda: None
+    except Exception:
+        return lambda: None
+
+    after = _timer_resolution_ms(ntdll)
+    fmt = lambda v: "unknown" if v is None else f"{v:.3f} ms"  # noqa: E731
+    print(f"timer resolution: was {fmt(before)}, now {fmt(after)}")
+
+    def undo():
+        try:
+            winmm.timeEndPeriod(period_ms)
+        except Exception:
+            pass
+
+    return undo
+
+
 def _serve() -> int:
     """Internal: run the uvicorn server in this process. The frozen build
     has no child interpreter for `-m uvicorn`, so start_server() re-execs
@@ -1302,7 +1511,11 @@ def _serve() -> int:
 
     port = int(os.environ.get("APP_PORT", "3001"))
     host = os.environ.get("APP_HOST", "127.0.0.1")
-    uvicorn.run(app.main.app, host=host, port=port, use_colors=False)
+    restore_timer = raise_timer_resolution()
+    try:
+        uvicorn.run(app.main.app, host=host, port=port, use_colors=False)
+    finally:
+        restore_timer()
     return 0
 
 
