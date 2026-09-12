@@ -1,4 +1,12 @@
 {
+  "2.13.1": {
+    "title": "The words the server sends",
+    "items": [
+      "For nonprofits: every message the server sends now uses your words — a missing pledge says Pledge, not Invoice",
+      "For nonprofits: what you post is written in your words — a new pledge posts as Pledge #… in the ledger and on the payment page; existing entries keep the words they were posted with",
+      "Default email templates are created in your company's words"
+    ]
+  },
   "2.13.0": {
     "title": "Bank of America, in a file the bank produced",
     "items": [

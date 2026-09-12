@@ -7,6 +7,43 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+### v2.13.1 — The words the server sends
+
+**Every sentence the server sends now follows the company type.** The
+page's labels went through the terminology dictionary; the sentences the
+server sent back never did, so a nonprofit's Pledge screen said "Invoice not
+found" under it — 42 such sentences across the routes, three files wrapping
+any. Found by walking a running server in both company types, an
+instrument that measures the output the page-side guards cannot see (it is
+checked in under `scripts/audit/`). Rather than 42 edits, the swap happens
+once, at the boundary every HTTP error crosses; the missing-control-account
+message goes the same way. Three surfaces that are not errors are wrapped
+where they are built: the control-account purpose on the chart, the AI
+analysis labels, and the "No job" bucket in job profitability. The analytics
+empty state, which the 2.9.1 sweep missed because it is lower-case, is
+wrapped on the page and in the PDF. And an all-caps dictionary key was being
+treated as a shouted sentence: "P&L analysis" came out "ACTIVITIES analysis".
+
+**What a posting writes for itself is in the company's words.** Fourteen
+sites composed "Invoice #1081 - Boise Neon Supply" into stored ledger
+descriptions, the inventory memo, and the line item a payer sees on the
+Stripe, Square or PayPal page. A nonprofit now posts "Pledge #1081". The
+words are chosen once, at posting time; **history is never rewritten** — a
+company that becomes a nonprofit keeps "Invoice #" on what it posted as a
+business, and the two coexist. The integrations never keyed on those words:
+Stripe resolves by metadata, PayPal by its custom id, Square by the order
+id, and the tests pin that every id, amount and URL is byte-identical
+between the two company types while only the text differs. QuickBooks
+import keeps QuickBooks' words; a vendor's invoice on a printed check stays
+an invoice; CSV export headers are unchanged.
+
+**Default email templates are seeded in the company's words.** A nonprofit's
+saved, editable invoice template no longer opens with "Invoice #" — and the
+Jinja expressions inside it are left alone, because the first cut turned
+`{{ invoice.invoice_number }}` into `{{ pledge.invoice_number }}`.
+
+No schema change. An existing company file opens with no upgrade step.
+
 ### v2.13.0 — Bank of America, in a file the bank produced
 
 **Bank of America detail CSV import.** Checking and savings detail exports
