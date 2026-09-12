@@ -28,3 +28,9 @@ private `Lazyjimpressions/slowbooks-ai-ops` repository.
 resetting the fork integration branch to a byte-identical mirror. Fork commits
 remain on `main` until upstream accepts them or a later reviewed decision
 replaces them.
+
+## Superseded — September 12, 2026
+
+ADR 0005 replaces the ahead-of-upstream integration-branch model with a clean
+mirror plus focused upstream contribution branches. The completed fork history
+remains preserved by archive tag rather than carried on active `main`.
