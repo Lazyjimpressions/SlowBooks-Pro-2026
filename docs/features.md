@@ -57,7 +57,7 @@ The register is the ledger account (v2.10, issue #114). Full guide: [docs/bankin
 - **Make Deposits** — Move funds from Undeposited Funds to a bank account. Select pending payments, choose target account, create deposit
 - **Credit Card Charges** — DR Expense, CR the card you pick (default 2100). Voidable
 - **Check Printing** — Generate check PDFs in standard 3-per-page format (stub/stub/check) with payee, amount in words, memo, and signature line
-- **Bank feeds and file imports (SimpleFIN, OFX/QFX, Chase/PayPal CSV)** — a review queue: each statement line is auto-matched to the posting the ledger already has (same amount and side within five days, check number narrows, ambiguity waits), or added with a category, or excluded. Bank rules suggest categories and never post
+- **Bank feeds and file imports (SimpleFIN, OFX/QFX, Bank of America/Chase/PayPal CSV)** — a review queue: each statement line is auto-matched to the posting the ledger already has (same amount and side within five days, check number narrows, ambiguity waits), or added with a category, or excluded. Bank rules suggest categories and never post
 - **Bank Reconciliation** — over the ledger's lines: beginning balance from the prior statement, tick cleared lines (matched statement lines arrive cleared), difference must be $0, completing locks the lines
 
 ## Reports & Tax
