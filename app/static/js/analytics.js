@@ -164,7 +164,7 @@ const AnalyticsPage = {
       (a, b) => b[1] - a[1],
     );
     if (entries.length === 0) {
-      return '<div class="analytics-empty">No paid invoices this period.</div>';
+      return `<div class="analytics-empty">${Terms.text('No paid invoices this period.')}</div>`;
     }
     const rows = entries
       .map(

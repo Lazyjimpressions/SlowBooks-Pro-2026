@@ -87,7 +87,8 @@ const Terms = {
         return s.replace(Terms._re, (found) => {
             const exact = Object.keys(d).find(k => k.toLowerCase() === found.toLowerCase());
             const out = exact ? d[exact] : found;
-            if (found === found.toUpperCase()) return out.toUpperCase();
+            // an all-caps KEY (P&L, A/R) is not a shouted sentence
+            if (found === found.toUpperCase() && !(exact && exact === exact.toUpperCase())) return out.toUpperCase();
             if (found[0] === found[0].toLowerCase()) return out[0].toLowerCase() + out.slice(1);
             return out;
         });

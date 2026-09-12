@@ -67,12 +67,27 @@ def list_accounts(
         q = q.filter(Account.account_type == account_type)
     if bank:
         q = q.filter(Account.bank_kind.isnot(None))
-    return q.order_by(Account.account_number).all()
+    return _in_company_words(db, q.order_by(Account.account_number).all())
 
 
 @router.get("/{account_id}", response_model=AccountResponse)
 def get_account(account_id: int, db: Session = Depends(get_db)):
-    return get_or_404(db, Account, account_id)
+    return _in_company_words(db, [get_or_404(db, Account, account_id)])[0]
+
+
+def _in_company_words(db: Session, accounts):
+    """The control-account purpose ("what customers owe — every invoice and
+    payment") is written in the business words the registry keeps; the
+    chart page prints it beside the account. Say it in the company's."""
+    from app.services.terminology import terms_from_db
+
+    terms = terms_from_db(db)
+    out = [AccountResponse.model_validate(a) for a in accounts]
+    if terms.is_nonprofit:
+        for r in out:
+            if r.control_purpose:
+                r.control_purpose = terms.text(r.control_purpose)
+    return out
 
 
 @router.post("", response_model=AccountResponse, status_code=201)

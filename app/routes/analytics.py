@@ -663,10 +663,28 @@ def ai_insights(
 
 
 @router.get("/ai-actions")
-def list_ai_actions():
+def list_ai_actions(db: Session = Depends(get_db)):
     """List the curated AI analysis actions, grouped by category for the
-    UI dropdown. No secrets, no per-row LLM calls — purely catalogue."""
-    return {"groups": ai_list_actions()}
+    UI dropdown. No secrets, no per-row LLM calls — purely catalogue.
+    The labels are written in the business words ("Unpaid invoices
+    summary", "Customers & Sales"); the dropdown says them in the
+    company's."""
+    from app.services.terminology import terms_from_db
+
+    terms = terms_from_db(db)
+    groups = ai_list_actions()
+    if terms.is_nonprofit:
+        groups = [
+            {
+                **g,
+                "category": terms.text(g["category"]),
+                "actions": [
+                    {**a, "label": terms.text(a["label"])} for a in g["actions"]
+                ],
+            }
+            for g in groups
+        ]
+    return {"groups": groups}
 
 
 @router.post("/ai-actions/{action_key}")

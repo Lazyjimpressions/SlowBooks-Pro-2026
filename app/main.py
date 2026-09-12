@@ -422,12 +422,53 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+def _company_terms():
+    """The vocabulary the company sees, read fresh: one settings row. Never
+    raises — an error response must not fail because of its wording."""
+    from app.services.terminology import Terms, terms_from_db
+
+    # Looked up on the module, not bound at import: the test harness and
+    # the desktop launcher both repoint app.database.SessionLocal.
+    import app.database as database
+
+    try:
+        db = database.SessionLocal()
+        try:
+            return terms_from_db(db)
+        finally:
+            db.close()
+    except Exception:
+        return Terms("business")
+
+
 async def _method_not_allowed_handler(request: Request, exc: StarletteHTTPException):
-    """A bare 405 on DELETE /api/<doc>/<id> names nothing. Posted documents
+    """Two things every HTTP error passes through.
+
+    A bare 405 on DELETE /api/<doc>/<id> names nothing. Posted documents
     are never deleted — they are voided, which keeps the audit trail and
     reverses the ledger — and the void route exists one segment further
     down. Say so in the body (2.9.0 gate: an agent rebuilt a whole fixture
-    to work around a 405 that could have pointed at POST .../void)."""
+    to work around a 405 that could have pointed at POST .../void).
+
+    And the words. Every page label goes through the terminology
+    dictionary, and the sentences the server sends back never did — a
+    nonprofit's Pledge screen said "Invoice not found" under it. Forty-two
+    such sentences across the routes, three files wrapping any of them.
+    Rather than forty-two edits, the swap happens here, once, at the
+    boundary every HTTPException crosses: whole-word, case-preserving,
+    and the protected words ("Sales Tax") stay by the dictionary's own
+    rule. The vocabulary audit's walk of a running server is what found
+    it (scripts/audit/vocab_walk.py)."""
+    if isinstance(exc.detail, str) and exc.detail and exc.status_code != 405:
+        terms = _company_terms()
+        if terms.is_nonprofit:
+            worded = terms.text(exc.detail)
+            if worded != exc.detail:
+                return JSONResponse(
+                    status_code=exc.status_code,
+                    headers=exc.headers,
+                    content={"detail": worded},
+                )
     if exc.status_code == 405 and request.method == "DELETE":
         candidate = request.url.path.rstrip("/") + "/void"
         # The spec is the flat, cached view of every mounted router.
@@ -464,7 +505,11 @@ async def _missing_control_account_handler(request: Request, exc: Exception):
         getattr(exc, "number", "?"),
         getattr(exc, "name", "?"),
     )
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
+    # "what customers owe — every invoice and payment" is written in the
+    # business words; the company may not use them (see the handler above).
+    return JSONResponse(
+        status_code=409, content={"detail": _company_terms().text(str(exc))}
+    )
 
 
 app.add_exception_handler(MissingControlAccount, _missing_control_account_handler)

@@ -74,8 +74,12 @@ class AccountResponse(BaseModel):
 
         if control_accounts.is_control_number(self.account_number):
             self.is_control = True
-            _name, purpose = control_accounts.describe(self.account_number)
-            self.control_purpose = purpose
+            if self.control_purpose is None:
+                # The route may already have said it in the company's
+                # words; response validation runs this again and must
+                # not put the business words back.
+                _name, purpose = control_accounts.describe(self.account_number)
+                self.control_purpose = purpose
         return self
 
     updated_at: datetime

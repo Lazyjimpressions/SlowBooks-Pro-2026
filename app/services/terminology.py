@@ -120,7 +120,10 @@ class Terms:
             found = m.group(0)
             exact = next((k for k in NONPROFIT if k.lower() == found.lower()), None)
             out = NONPROFIT[exact] if exact else found
-            if found.isupper():
+            # "P&L" and "A/R" are upper-case as keys; matching them is
+            # not a shouted sentence, so "P&L analysis" must not become
+            # "ACTIVITIES analysis".
+            if found.isupper() and not (exact or "").isupper():
                 return out.upper()
             if found[0].islower():
                 return out[0].lower() + out[1:]
