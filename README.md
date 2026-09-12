@@ -297,29 +297,9 @@ offer it as a paid service. Full terms in [LICENSE](LICENSE).
 
 ## Contributors
 
-Code on `main`, by GitHub handle (alphabetical). Every one is credited in the
-[CHANGELOG](CHANGELOG.md) entry that shipped their work and in the git history.
+- [VonHoltenCodes](https://github.com/VonHoltenCodes) — creator and maintainer
+- [Keith (@ContractorKeith)](https://github.com/ContractorKeith) — macOS testing and review
 
-[@amazon1148](https://github.com/amazon1148) ·
-[@CimarronSiteServices](https://github.com/CimarronSiteServices) ·
-[@ContractorKeith](https://github.com/ContractorKeith) (macOS testing and review) ·
-[@jake-378](https://github.com/jake-378) ·
-[@jarvis4openclaw](https://github.com/jarvis4openclaw) ·
-[@jeremy-patterson1](https://github.com/jeremy-patterson1) ·
-[@joelmacklow](https://github.com/joelmacklow) ·
-[@jsonmez](https://github.com/jsonmez) ·
-[@kycrna](https://github.com/kycrna) ·
-[@LayoverLogic](https://github.com/LayoverLogic) ·
-[@Lazyjimpressions](https://github.com/Lazyjimpressions) ·
-[@mdornich](https://github.com/mdornich) ·
-[@MkInc42](https://github.com/MkInc42) ·
-[@moshgrossman](https://github.com/moshgrossman) ·
-[@PNWImport](https://github.com/PNWImport) ·
-[@rchanks](https://github.com/rchanks) ·
-[@WC3D](https://github.com/WC3D) ·
-Alex Jordan
-
-Creator and maintainer: [@VonHoltenCodes](https://github.com/VonHoltenCodes).
-Releases are gated on three platforms before they ship — Windows, macOS and
-Linux with Docker/PostgreSQL — and every finding from that gate is recorded
-in the open.
+Maintainers by platform are in [CONTRIBUTING.md](CONTRIBUTING.md). Everyone
+who has contributed is credited in the [CHANGELOG](CHANGELOG.md) entry that
+shipped their work and in the git history.
