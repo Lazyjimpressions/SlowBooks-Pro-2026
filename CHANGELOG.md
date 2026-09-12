@@ -42,6 +42,16 @@ saved, editable invoice template no longer opens with "Invoice #" — and the
 Jinja expressions inside it are left alone, because the first cut turned
 `{{ invoice.invoice_number }}` into `{{ pledge.invoice_number }}`.
 
+**Connecting QuickBooks Online works again.** Contributed by
+@CimarronSiteServices (#151, root cause in #152). Intuit's consent screen
+sends the browser back to the app as a cross-site navigation, and a
+`SameSite=Strict` session cookie is never attached to one of those — so the
+callback answered "Not authenticated" before the token exchange ever ran, on
+every attempt, on every install. The callback is now exempt from the session
+check the way the Stripe webhook is, and for the same reason: it carries its
+own proof. The random `state` token stored when the connection starts must
+match, exactly, or the callback is refused.
+
 No schema change. An existing company file opens with no upgrade step.
 
 ### v2.13.0 — Bank of America, in a file the bank produced

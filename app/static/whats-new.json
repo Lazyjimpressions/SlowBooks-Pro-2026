@@ -2,6 +2,7 @@
   "2.13.1": {
     "title": "The words the server sends",
     "items": [
+      "Connecting QuickBooks Online works again — the sign-in handoff from Intuit was being refused before it could finish (contributed by CimarronSiteServices)",
       "For nonprofits: every message the server sends now uses your words — a missing pledge says Pledge, not Invoice",
       "For nonprofits: what you post is written in your words — a new pledge posts as Pledge #… in the ledger and on the payment page; existing entries keep the words they were posted with",
       "Default email templates are created in your company's words"
