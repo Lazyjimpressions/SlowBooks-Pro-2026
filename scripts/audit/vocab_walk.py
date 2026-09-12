@@ -36,34 +36,65 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from app.services.terminology import NONPROFIT, PROTECTED_WORDS  # noqa: E402
+from app.services.terminology import PROTECTED_WORDS  # noqa: E402
 
 # Business words and their derived forms. The dictionary keys are phrases;
 # a leak is any whole-word appearance of the base terms, so "Invoiced",
 # "Invoicing" and "Invoice #" count even though no key spells them.
-BASE_TERMS = ("Customer", "Invoice", "Sales Receipt", "Job", "Class", "Income",
-              "Equity", "Profit & Loss", "P&L", "Receivable", "A/R")
+BASE_TERMS = (
+    "Customer",
+    "Invoice",
+    "Sales Receipt",
+    "Job",
+    "Class",
+    "Income",
+    "Equity",
+    "Profit & Loss",
+    "P&L",
+    "Receivable",
+    "A/R",
+)
 _DERIVED = r"(?:Customers?|Invoic(?:e|es|ed|ing)|Sales Receipts?|Jobs?|Class(?:es)?|Income|Equity|Profit & Loss|P&L|Receivables?|A/R)"
 BUSINESS_RE = re.compile(r"(?<![\w/])" + _DERIVED + r"(?![\w/])", re.IGNORECASE)
-PROTECTED_RE = re.compile(r"\b(" + "|".join(re.escape(w) for w in PROTECTED_WORDS) + r")\b", re.I)
+PROTECTED_RE = re.compile(
+    r"\b(" + "|".join(re.escape(w) for w in PROTECTED_WORDS) + r")\b", re.I
+)
 IDENT_RE = re.compile(r"^[a-z][a-z0-9]*([._-][a-z0-9]+)*$")
-SKIP_PREFIX = ("/api/auth", "/api/backups", "/api/companies", "/api/ai", "/api/simplefin",
-               "/api/qbo", "/api/updates", "/api/system/update")
+SKIP_PREFIX = (
+    "/api/auth",
+    "/api/backups",
+    "/api/companies",
+    "/api/ai",
+    "/api/simplefin",
+    "/api/qbo",
+    "/api/updates",
+    "/api/system/update",
+)
 NOT_FOUND_ID = 999999
+# Strings that carry a business word by design and are not vocabulary: the
+# seeded chart's account names ("Service Income", "Accounts Receivable")
+# and the state tax tables' reference notes. The chart is the company's
+# data; renaming it is theirs to do.
+SEEDED_DATA = ("app/seed/", "app/services/state_tax/")
+TAX_TERM_RE = re.compile(r"\bIncome Tax\b", re.I)
+CHART_NAMES = {"Accounts Receivable", "Opening Balance Equity", "Service Income"}
 
 
 class Client:
     def __init__(self, base):
         self.base = base.rstrip("/")
         self.opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+            urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar())
+        )
 
     def call(self, method, path, payload=None):
         data = json.dumps(payload).encode() if payload is not None else None
         headers = {"Accept": "*/*"}
         if data is not None:
             headers["Content-Type"] = "application/json"
-        req = urllib.request.Request(self.base + path, data=data, headers=headers, method=method)
+        req = urllib.request.Request(
+            self.base + path, data=data, headers=headers, method=method
+        )
         try:
             with self.opener.open(req, timeout=120) as r:
                 return r.status, r.headers.get("content-type", ""), r.read()
@@ -94,7 +125,9 @@ def strings_in(obj, path="$"):
 def pdf_text(data: bytes) -> list[str]:
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         f.write(data)
-    out = subprocess.run(["pdftotext", "-layout", f.name, "-"], capture_output=True, text=True)
+    out = subprocess.run(
+        ["pdftotext", "-layout", f.name, "-"], capture_output=True, text=True
+    )
     Path(f.name).unlink(missing_ok=True)
     return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
 
@@ -118,12 +151,21 @@ def harvest_ids(c: Client, spec: dict) -> dict[str, list[int]]:
     """resource segment -> ids seen in its list endpoint."""
     ids: dict[str, list[int]] = defaultdict(list)
     for path, ops in spec["paths"].items():
-        if "get" not in ops or "{" in path or not path.startswith("/api/") or path.startswith(SKIP_PREFIX):
+        if (
+            "get" not in ops
+            or "{" in path
+            or not path.startswith("/api/")
+            or path.startswith(SKIP_PREFIX)
+        ):
             continue
         status, body = c.json("GET", path)
         if status != 200:
             continue
-        rows = body if isinstance(body, list) else (body.get("items") if isinstance(body, dict) else None)
+        rows = (
+            body
+            if isinstance(body, list)
+            else (body.get("items") if isinstance(body, dict) else None)
+        )
         if isinstance(rows, list):
             seg = path.split("/")[2]
             for row in rows[:5]:
@@ -141,7 +183,9 @@ def fill(path: str, ids: dict[str, list[int]], missing: bool) -> list[str]:
     if missing:
         url = path
         for p in params:
-            url = url.replace("{" + p + "}", str(NOT_FOUND_ID) if p.endswith("id") else "nonexistent")
+            url = url.replace(
+                "{" + p + "}", str(NOT_FOUND_ID) if p.endswith("id") else "nonexistent"
+            )
         return [url]
     url = path
     for p in params:
@@ -158,12 +202,24 @@ def walk(c: Client, spec: dict, ids: dict) -> dict[str, list[tuple[str, str, str
     """route -> [(kind, where, string)]"""
     seen: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
     for path, ops in sorted(spec["paths"].items()):
-        if "get" not in ops or not path.startswith("/api/") or path.startswith(SKIP_PREFIX):
+        if (
+            "get" not in ops
+            or not path.startswith("/api/")
+            or path.startswith(SKIP_PREFIX)
+        ):
             continue
-        urls = [path] if "{" not in path else fill(path, ids, False) + fill(path, ids, True)
+        urls = (
+            [path]
+            if "{" not in path
+            else fill(path, ids, False) + fill(path, ids, True)
+        )
         for url in urls:
             status, ctype, body = c.call("GET", url)
-            key = f"GET {path}" + ("  [404 path]" if str(NOT_FOUND_ID) in url or "nonexistent" in url else "")
+            key = f"GET {path}" + (
+                "  [404 path]"
+                if str(NOT_FOUND_ID) in url or "nonexistent" in url
+                else ""
+            )
             if "pdf" in ctype:
                 for ln in pdf_text(body):
                     seen[key].append(("pdf", f"{status}", ln))
@@ -180,17 +236,30 @@ def walk(c: Client, spec: dict, ids: dict) -> dict[str, list[tuple[str, str, str
     # the two read-only previews the template editor and the send dialog use
     inv = (ids.get("invoices") or [None])[0]
     if inv:
-        status, body = c.json("POST", "/api/email-templates/preview",
-                              {"invoice_id": inv, "subject_template": "", "body_template": ""})
+        status, body = c.json(
+            "POST",
+            "/api/email-templates/preview",
+            {"invoice_id": inv, "subject_template": "", "body_template": ""},
+        )
         for where, s in strings_in(body):
-            seen["POST /api/email-templates/preview (defaults)"].append(("json", f"{status} {where}", s))
+            seen["POST /api/email-templates/preview (defaults)"].append(
+                ("json", f"{status} {where}", s)
+            )
         status, tpl = c.json("GET", "/api/email-templates")
         for t in (tpl or []) if isinstance(tpl, list) else []:
-            status, body = c.json("POST", "/api/email-templates/preview",
-                                  {"invoice_id": inv, "subject_template": t.get("subject_template", ""),
-                                   "body_template": t.get("body_template", "")})
+            status, body = c.json(
+                "POST",
+                "/api/email-templates/preview",
+                {
+                    "invoice_id": inv,
+                    "subject_template": t.get("subject_template", ""),
+                    "body_template": t.get("body_template", ""),
+                },
+            )
             for where, s in strings_in(body):
-                seen[f"POST /api/email-templates/preview ({t.get('name')})"].append(("json", f"{status} {where}", s))
+                seen[f"POST /api/email-templates/preview ({t.get('name')})"].append(
+                    ("json", f"{status} {where}", s)
+                )
     return seen
 
 
@@ -216,7 +285,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", required=True)
     ap.add_argument("--password", default="neonpulse")
-    ap.add_argument("--out", type=Path, default=ROOT / "scripts/audit/vocab_walk_report.json")
+    ap.add_argument(
+        "--out", type=Path, default=ROOT / "scripts/audit/vocab_walk_report.json"
+    )
     args = ap.parse_args()
 
     c = Client(args.base)
@@ -226,7 +297,9 @@ def main() -> int:
     status, settings = c.json("GET", "/api/settings")
     original = settings.get("company_type", "business")
     ids = harvest_ids(c, spec)
-    print(f"ids harvested for {len(ids)} resources; {sum(len(v) for v in ids.values())} ids")
+    print(
+        f"ids harvested for {len(ids)} resources; {sum(len(v) for v in ids.values())} ids"
+    )
 
     try:
         c.json("PUT", "/api/settings", {"company_type": "business"})
@@ -236,7 +309,11 @@ def main() -> int:
     finally:
         c.json("PUT", "/api/settings", {"company_type": original})
 
-    files = [p for p in ROOT.glob("app/**/*") if p.suffix in (".py", ".js", ".html", ".json") and "__pycache__" not in str(p)]
+    files = [
+        p
+        for p in ROOT.glob("app/**/*")
+        if p.suffix in (".py", ".js", ".html", ".json") and "__pycache__" not in str(p)
+    ]
     files.sort(key=lambda p: (p.suffix != ".py", str(p)))
 
     report = []
@@ -247,13 +324,31 @@ def main() -> int:
                 continue
             same_in_business = (kind, where, s) in biz
             src = source_backed(s, files) if same_in_business else None
-            report.append({
-                "route": route, "kind": kind, "where": where, "text": s[:200],
-                "class": classify(s),
-                "unchanged_from_business": same_in_business,
-                "source": src,
-                "verdict": "CODE LEAK" if src else ("data or dynamic" if same_in_business else "changed"),
-            })
+            if src and (
+                src.startswith(SEEDED_DATA)
+                or TAX_TERM_RE.search(s)
+                or s.strip() in CHART_NAMES
+            ):
+                # a seeded account name or a tax-table note: the company's
+                # own words, correctly left alone (the 2.9.1 audit's
+                # "Owner's Equity" call)
+                verdict = "seeded data"
+            elif src:
+                verdict = "CODE LEAK"
+            else:
+                verdict = "data or dynamic" if same_in_business else "changed"
+            report.append(
+                {
+                    "route": route,
+                    "kind": kind,
+                    "where": where,
+                    "text": s[:200],
+                    "class": classify(s),
+                    "unchanged_from_business": same_in_business,
+                    "source": src,
+                    "verdict": verdict,
+                }
+            )
 
     args.out.write_text(json.dumps(report, indent=1))
     leaks = [r for r in report if r["verdict"] == "CODE LEAK"]
@@ -261,8 +356,13 @@ def main() -> int:
     routes = defaultdict(list)
     for r in leaks:
         routes[r["route"]].append(r)
-    print(f"\nstrings captured: business {sum(len(v) for v in business.values())}, nonprofit {sum(len(v) for v in nonprofit.values())}")
-    print(f"business words in nonprofit output: {len(report)} — {len(leaks)} source-backed CODE LEAKS across {len(routes)} routes, {len(dyn)} data/dynamic\n")
+    print(
+        f"\nstrings captured: business {sum(len(v) for v in business.values())}, nonprofit {sum(len(v) for v in nonprofit.values())}"
+    )
+    seeded = [r for r in report if r["verdict"] == "seeded data"]
+    print(
+        f"business words in nonprofit output: {len(report)} — {len(leaks)} source-backed CODE LEAKS across {len(routes)} routes, {len(seeded)} seeded data, {len(dyn)} data/dynamic\n"
+    )
     for route, rs in sorted(routes.items()):
         print(f"== {route}")
         shown = set()
