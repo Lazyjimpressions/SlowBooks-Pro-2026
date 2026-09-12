@@ -3,11 +3,12 @@
 # Phase 10: Quick Wins + Medium Effort Features
 # ============================================================================
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.email_templates import EmailTemplate
+from app.schemas.common import StrictModel
 from app.schemas.email_templates import (
     EmailTemplateCreate,
     EmailTemplateUpdate,
@@ -83,6 +84,60 @@ def get_template(template_id: int, db: Session = Depends(get_db)):
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     return template
+
+
+class _TemplatePreviewRequest(StrictModel):
+    invoice_id: int
+    subject_template: str = ""
+    body_template: str = ""
+
+
+@router.post("/preview")
+def preview_template(
+    data: _TemplatePreviewRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Render candidate template text against a real invoice, without saving.
+
+    #140 gave the send dialog a preview of what it is about to send. This is
+    the other half: the operator editing `invoice_email` under Settings can
+    see an edit before committing it, rather than saving over a working
+    template to find out. Read-only — nothing is written, nothing is mailed.
+    """
+    from jinja2 import TemplateError
+
+    from app.models.invoices import Invoice
+    from app.services.email_service import invoice_email_context, template_env
+    from app.services.payments import enabled_providers
+    from app.services.settings_service import get_all_settings
+
+    inv = db.query(Invoice).filter(Invoice.id == data.invoice_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    company = get_all_settings(db)
+    pay_url = None
+    if inv.payment_token and enabled_providers(db):
+        pay_url = f"{str(request.base_url).rstrip('/')}/pay/{inv.payment_token}"
+
+    ctx = invoice_email_context(inv, company, pay_url=pay_url)
+    env = template_env()
+    try:
+        subject = env.from_string(data.subject_template).render(**ctx)
+        body = env.from_string(data.body_template).render(**ctx)
+    except (TemplateError, Exception) as exc:
+        # Everything here renders text the client supplied: a syntax error, a
+        # sandbox escape and "{{ 1/0 }}" are all bad input, so all are a 400.
+        # The message stays generic because the text came from the client.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Template could not be rendered. Check the template "
+                "variables and syntax."
+            ),
+        ) from exc
+    return {"subject": subject, "html_body": body}
 
 
 @router.post("", response_model=EmailTemplateResponse, status_code=201)

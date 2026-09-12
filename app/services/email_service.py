@@ -137,23 +137,37 @@ def send_email(
 def render_template_from_db(db: Session, template_name: str, context: dict) -> tuple:
     """Load template from DB, render with Jinja2 SandboxedEnvironment, fall back to file."""
     from app.models.email_templates import EmailTemplate
-    from jinja2.sandbox import SandboxedEnvironment
 
     tpl = db.query(EmailTemplate).filter(EmailTemplate.name == template_name).first()
     if tpl:
-        # autoescape=True so customer-supplied names / addresses / memo
-        # text injected via {{ }} can't break out of HTML context. Same
-        # rule WC3D applied to the file-loader Environment in commit
-        # ca6182f — keep both paths consistent.
-        env = SandboxedEnvironment(autoescape=True)
-        from app.services.pdf_service import _format_currency, _format_date
-
-        env.filters["currency"] = _format_currency
-        env.filters["fdate"] = _format_date
+        env = template_env()
         subject = env.from_string(tpl.subject_template).render(**context)
         body = env.from_string(tpl.body_template).render(**context)
         return subject, body
     return None, None
+
+
+def template_env():
+    """The environment every operator-authored template is rendered in.
+
+    autoescape=True so customer-supplied names / addresses / memo text
+    injected via {{ }} can't break out of HTML context. Same rule WC3D
+    applied to the file-loader Environment in commit ca6182f — keep both
+    paths consistent. Sandboxed because the template text is operator-
+    editable and must not reach back into Python objects through attribute
+    access.
+
+    Shared by the send and by the template editor's preview, so a preview
+    cannot render under different rules than the mail it is previewing.
+    """
+    from jinja2.sandbox import SandboxedEnvironment
+
+    from app.services.pdf_service import _format_currency, _format_date
+
+    env = SandboxedEnvironment(autoescape=True)
+    env.filters["currency"] = _format_currency
+    env.filters["fdate"] = _format_date
+    return env
 
 
 def invoice_email_label(invoice, company_settings: dict) -> str:
