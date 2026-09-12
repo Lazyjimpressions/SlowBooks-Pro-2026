@@ -52,6 +52,15 @@ to close it checked that the named file existed, which is exactly the check
 that passes while the instruction still fails. It now takes the command out
 of the message and runs it.
 
+**And it tells the two kinds of blank apart.** Something no email template
+can ever use is reported differently from something that is available and
+simply not set for this invoice. The first version called both "not available
+to an email template" — which was wrong about the payment link, and
+contradicted the list of usable variables printed two inches above it. Raised
+by the Windows QA agent as a suggestion rather than a finding; taken because
+one message disagreeing with another message on the same screen is the defect
+this release spent its whole review closing.
+
 **A template preview says what came out blank, and the editor's own list of
 what you can use is now accurate.** The hint under the editor offered
 `{{ amount }}`, which does not exist and rendered as nothing, and offered

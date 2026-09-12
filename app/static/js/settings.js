@@ -808,12 +808,24 @@ const SettingsPage = {
             // that explains nothing. The server reports what resolved to
             // nothing; say so next to the preview rather than leaving them
             // looking at a hole.
-            const missing = p.resolved_to_nothing || [];
-            const note = missing.length
+            // Two kinds of blank. Telling an operator that pay_url is "not
+            // available" contradicted the variable list two inches above,
+            // which says it is available and conditional.
+            const unavailable = p.unavailable || [];
+            const conditional = p.conditional || [];
+            const lines = [];
+            if (unavailable.length) {
+                lines.push(`<strong>Not available to an email template:</strong>
+                    ${unavailable.map(escapeHtml).join(', ')} — these came out blank and
+                    the email would send with the same gaps.`);
+            }
+            for (const c of conditional) {
+                lines.push(`<strong>${escapeHtml(c.name)} is not set for this ${T('Invoice').toLowerCase()}:</strong>
+                    ${escapeHtml(c.why)}.`);
+            }
+            const note = lines.length
                 ? `<p class="form-hint" style="margin-top:8px;color:var(--text-warning,#92400e);">
-                       <strong>Rendered as nothing:</strong> ${missing.map(escapeHtml).join(', ')}.
-                       These are not available to an email template, so they came out blank —
-                       the email would send with the same gaps.</p>`
+                       ${lines.join('<br>')}</p>`
                 : '';
             out.innerHTML = `<p style="margin-top:8px;"><strong>Subject:</strong> ${escapeHtml(p.subject)}</p>
                 ${note}

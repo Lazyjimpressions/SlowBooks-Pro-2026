@@ -109,6 +109,7 @@ def preview_template(
 
     from app.models.invoices import Invoice
     from app.services.email_service import (
+        classify_blanks,
         invoice_email_context,
         recording_template_env,
     )
@@ -146,10 +147,14 @@ def preview_template(
     # working template with a hole in it. The body is byte-identical to what
     # would be sent — the preview would not be a preview otherwise — and the
     # names that resolved to nothing are reported beside it.
+    # Two kinds of blank, and calling them both "not available" contradicted
+    # the editor's own variable list for `pay_url` (@skytech, 2.12.1 gate).
+    blanks = list(resolved_to_nothing)
     return {
         "subject": subject,
         "html_body": body,
-        "resolved_to_nothing": list(resolved_to_nothing),
+        "resolved_to_nothing": blanks,
+        **classify_blanks(blanks),
     }
 
 

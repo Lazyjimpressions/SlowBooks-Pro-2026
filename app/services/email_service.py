@@ -221,6 +221,42 @@ class RecordingUndefined(Undefined):
         return ""
 
 
+# Names a template MAY use that are simply absent for this particular
+# invoice, as opposed to names no email template can ever use.
+#
+# @skytech, 2.12.1 gate: the preview banner said `pay_url` was "not available
+# to an email template" while the hint line two inches above said it IS
+# available, conditional on a payment provider. Two messages about one
+# variable, disagreeing — which is the class this whole gate has been about,
+# in the smallest possible form.
+CONDITIONAL_TEMPLATE_NAMES = {
+    "pay_url": (
+        "only set when a payment provider is enabled — guard it with "
+        "{% if pay_url %}"
+    ),
+}
+
+
+def classify_blanks(names) -> dict:
+    """Split recorded blanks into the two kinds an author needs told apart.
+
+    `{{ config }}` can never work. `{{ pay_url }}` works and is not set for
+    this invoice. Telling an operator the second is "not available" is wrong,
+    and it contradicts the editor's own variable list.
+    """
+    unavailable, conditional = [], []
+    for name in names:
+        (conditional if name in CONDITIONAL_TEMPLATE_NAMES else unavailable).append(
+            name
+        )
+    return {
+        "unavailable": unavailable,
+        "conditional": [
+            {"name": n, "why": CONDITIONAL_TEMPLATE_NAMES[n]} for n in conditional
+        ],
+    }
+
+
 def recording_template_env():
     """`template_env()` plus a per-request note of what rendered as nothing.
 

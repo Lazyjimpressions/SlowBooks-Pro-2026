@@ -181,8 +181,12 @@ def test_the_editor_shows_it(client):
     js = (Path(__file__).resolve().parents[1] / "app/static/js/settings.js").read_text(
         encoding="utf-8"
     )
-    assert "resolved_to_nothing" in js
-    assert "Rendered as nothing" in js
+    # The classified fields, since the banner now tells the two kinds of
+    # blank apart rather than calling both "not available".
+    assert "p.unavailable" in js
+    assert "p.conditional" in js
+    assert "Not available to an email template" in js
+    assert "is not set for this" in js
 
 
 def test_two_renders_at_once_do_not_see_each_others_blanks():
@@ -241,6 +245,12 @@ def test_pay_url_does_not_render_the_word_None(client, db_session, invoice):
     out = r.json()
     assert "None" not in out["html_body"], out["html_body"]
     assert "pay_url" in out["resolved_to_nothing"]
+    # And it is reported as CONDITIONAL, not as unavailable — the editor's
+    # own variable list says pay_url is available, so calling it unavailable
+    # would have the product contradicting itself two inches apart.
+    assert [c["name"] for c in out["conditional"]] == ["pay_url"]
+    assert "pay_url" not in out["unavailable"]
+    assert "payment provider" in out["conditional"][0]["why"]
 
 
 def test_the_editor_hint_only_advertises_variables_that_exist(
@@ -270,3 +280,46 @@ def test_the_editor_hint_only_advertises_variables_that_exist(
     assert (
         not unexpected
     ), f"the editor advertises {unexpected}, which render as nothing"
+
+
+def test_a_name_no_template_can_use_is_reported_as_unavailable(
+    client, db_session, invoice
+):
+    """The other side of the split. `config` genuinely cannot work, and
+    saying so is correct — the defect was applying that sentence to a
+    variable the editor advertises."""
+    r = _preview(client, invoice.id, body="<p>{{ config }}</p>")
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["unavailable"] == ["config"]
+    assert out["conditional"] == []
+
+
+def test_the_banner_does_not_contradict_the_editors_variable_list(
+    client, db_session, invoice
+):
+    """@skytech, 2.12.1 gate. Every name the editor advertises must be
+    reported as conditional or not reported at all — never as "not available
+    to an email template", which is what the banner used to say about
+    `pay_url` while the hint line above called it available.
+
+    Read out of the editor rather than hardcoded, so correcting one and not
+    the other fails here instead of shipping."""
+    import re
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parents[1] / "app/static/js/settings.js").read_text(
+        encoding="utf-8"
+    )
+    hint = js[js.index("Variables:") : js.index("Filters:")]
+    advertised = {
+        n.split(".")[0] for n in re.findall(r"\{\{\s*([A-Za-z_][\w.]*)", hint)
+    }
+
+    body = "".join("<p>{{ %s }}</p>" % n for n in sorted(advertised))
+    out = _preview(client, invoice.id, body=body).json()
+    wrongly_unavailable = [n for n in out["unavailable"] if n in advertised]
+    assert not wrongly_unavailable, (
+        f"the editor advertises {wrongly_unavailable} and the preview calls "
+        f"them unavailable; the product is contradicting itself"
+    )
