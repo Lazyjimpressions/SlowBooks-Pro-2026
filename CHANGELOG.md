@@ -7,6 +7,13 @@ on what the software does, not on what sprint shipped what.
 
 ## [Unreleased]
 
+**You can see a template edit before you save it.** Editing `invoice_email`
+under Settings -> Email Templates still meant saving over a working template
+and mailing a real customer to find out what it looked like. The editor now
+renders what you have typed against an invoice you pick — no save, no send,
+no record written. It renders through the same sandboxed environment the send
+uses, so a preview cannot follow different rules than the mail it previews.
+
 ### v2.12.0 — Your chart, your templates, your clipboard
 
 Five reader-reported defects and one privately reported security issue,
