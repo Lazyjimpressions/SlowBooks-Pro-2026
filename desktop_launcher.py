@@ -1382,6 +1382,36 @@ def run_smoke_test(port: int = 3999) -> int:
     return 0
 
 
+def _repair_schema(argv) -> int:
+    """`SlowBooksPro --_repair-schema --database-url <url> [--dry-run]`.
+
+    Runs the repair in-process so it works from a frozen bundle, where a
+    separate interpreter is neither present nor able to import `app`.
+    """
+    from app.services.schema_repair import repair
+
+    url = None
+    for i, a in enumerate(argv):
+        if a == "--database-url" and i + 1 < len(argv):
+            url = argv[i + 1]
+        elif a.startswith("--database-url="):
+            url = a.split("=", 1)[1]
+    if not url:
+        print(
+            "usage: SlowBooksPro --_repair-schema --database-url <url> [--dry-run]",
+            file=sys.stderr,
+        )
+        return 2
+
+    result = repair(url, dry_run="--dry-run" in argv)
+    print(f"revision before : {result.started_at}")
+    print(f"revision now    : {result.now_at}")
+    if result.dropped:
+        print(f"dropped (empty) : {', '.join(result.dropped)}")
+    print(f"result          : {'OK' if result.ok else 'FAILED'} - {result.message}")
+    return 0 if result.ok else 1
+
+
 def main() -> int:
     # Make every stdio write total BEFORE argparse can print anything.
     # A frozen console=False build launched with redirected stdio (any
@@ -1410,6 +1440,22 @@ def main() -> int:
     # argparse must never meet, so handle it before parsing.
     if "--_serve" in sys.argv:
         return _serve()
+
+    # Same reason, same shape: the repair has to run INSIDE the frozen
+    # runtime, because that is the only place `app.services` is importable.
+    #
+    # 2.12.1 shipped scripts/repair-schema.py in the bundle and the startup
+    # refusal named it — and both QA agents found that nothing on the machine
+    # can execute it. `_internal/app/` holds only static and templates; the
+    # Python modules live inside the executable. On Windows the printed
+    # `python3` is the Microsoft Store alias stub, zero bytes.
+    #
+    # That was the FOURTH appearance of one class: an error telling the
+    # reader to do something they cannot do. The test I added asserted the
+    # named path EXISTS, which is exactly the assertion that passes while the
+    # instruction still fails. It executes it now.
+    if "--_repair-schema" in sys.argv:
+        return _repair_schema(sys.argv)
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

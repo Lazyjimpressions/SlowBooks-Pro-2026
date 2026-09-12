@@ -205,24 +205,121 @@ def test_the_startup_refusal_still_says_upgrade_for_an_ordinary_old_file(
 # ── #144: the message must name a path that exists ───────────────────────
 
 
-def test_the_refusal_names_a_path_that_exists():
-    """Found during check 0 on the published v2.12.0 artifact.
+def test_the_refusal_names_a_command_that_actually_runs(tmp_path, monkeypatch):
+    """Take the command OUT of the refusal message and execute it.
 
-    The guard printed `scripts/repair-schema.py`, and that file was **not in
-    the bundle** — `scripts/` ships selectively and the zip carried only the
-    three Server Edition PowerShell files. Server Edition is precisely the
-    deployment shape the half-upgraded branch exists for, so the operator
-    most likely to read the message was the one least likely to have the
-    file. An error naming a path the reader cannot reach is the same defect
-    as #139's "deactivate it instead" with no deactivate control.
+    @macbase1's framing, and it is the reason this is written this way:
+
+        it does not ask "is repair-schema.py in the bundle". It takes the
+        path out of the refusal message, stats it, and then executes it — so
+        any future message naming any path is measured the same way.
+
+    2.12.1 shipped the script and named it, and both agents found nothing on
+    the machine could run it: `_internal/app/` holds only static and
+    templates, and on Windows the printed `python3` is the Store alias stub.
+    My test asserted the named path **existed** — which is exactly the
+    assertion that passes while the instruction still fails. Fourth
+    appearance of that class, inside the fix meant to close it.
     """
-    from pathlib import Path
+    import re
+    import subprocess
+    import sys
 
-    from app.services.schema_repair import repair_script_path
+    import app.main as main
 
-    assert Path(
-        repair_script_path()
-    ).exists(), "the startup refusal names a script that is not there"
+    db, _ = _half_upgraded(tmp_path, name="from_message.db")
+    monkeypatch.setattr(main, "engine", create_engine(f"sqlite:///{db}"))
+    with pytest.raises(RuntimeError) as e:
+        main._refuse_a_database_behind_head()
+    message = str(e.value)
+
+    # The line the operator is told to type.
+    line = [ln.strip() for ln in message.splitlines() if "--database-url" in ln]
+    assert line, f"the refusal names no command:\n{message}"
+    command = line[0]
+
+    m = re.match(r"python3?\s+(\S.*?)\s+--database-url", command)
+    assert m, f"not a runnable python invocation on a checkout: {command!r}"
+    script = Path(m.group(1))
+    assert script.exists(), f"the refusal names {script}, which is not there"
+
+    # And it works when run exactly as instructed.
+    out = subprocess.run(
+        [sys.executable, str(script), "--database-url", f"sqlite:///{db}"],
+        capture_output=True,
+        text=True,
+        cwd=str(ROOT),
+    )
+    assert out.returncode == 0, out.stdout + out.stderr
+    assert _rev(db) == _head(), "the command ran and did not repair the file"
+
+
+def test_a_frozen_build_is_told_to_use_the_launcher(monkeypatch):
+    """There is no interpreter inside a bundle and `app` is not importable
+    from disk, so a frozen install is given the launcher's own flag instead of
+    a python invocation that cannot work."""
+    import sys
+
+    from app.services import schema_repair
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", "/Apps/SlowBooksPro.exe", raising=False)
+    cmd = schema_repair.repair_command()
+    assert cmd == "SlowBooksPro.exe --_repair-schema"
+    assert "python" not in cmd
+
+
+def test_the_launcher_exposes_that_flag():
+    """The other half: the flag has to exist, and be handled before argparse
+    like `--_serve`, or the message names something the binary rejects."""
+    src = (ROOT / "desktop_launcher.py").read_text(encoding="utf-8")
+    assert '"--_repair-schema" in sys.argv' in src
+    assert "def _repair_schema(" in src
+    # Before argparse, same as --_serve.
+    assert src.index('"--_repair-schema" in sys.argv') < src.index(
+        "parser = argparse.ArgumentParser"
+    )
+
+
+def test_the_repair_is_linear_in_blocking_tables(tmp_path):
+    """@skytech measured the old loop at 2**N - 1 drops, not N: every retry
+    re-ran the migration from the start and SQLite, whose DDL is not
+    transactional, recreated what the last round dropped. Three tables cost
+    seven rounds of twenty-five; five would need thirty-one and give up.
+
+    The blockers are cleared in one pass now, so N tables cost N drops."""
+    from sqlalchemy import inspect as _inspect
+
+    from app.database import Base
+    from app.services.schema_repair import (
+        repair,
+        tables_pending_revisions_would_create,
+    )
+
+    pending = sorted(
+        tables_pending_revisions_would_create(
+            "sqlite:///" + str(tmp_path / "probe.db"), "e7f8a9b0c1d2"
+        )
+    )
+    assert len(pending) >= 2, "need a multi-table revision to measure this"
+
+    from alembic import command
+
+    for n in range(1, len(pending) + 1):
+        db = tmp_path / f"linear{n}.db"
+        command.upgrade(_cfg(db), "e7f8a9b0c1d2")
+        engine = create_engine(f"sqlite:///{db}")
+        for name in pending[:n]:
+            Base.metadata.tables[name].create(bind=engine)
+        assert len(set(_inspect(engine).get_table_names()) & set(pending)) == n
+        engine.dispose()
+
+        result = repair(f"sqlite:///{db}")
+        assert result.ok, result.message
+        assert len(result.dropped) == n, (
+            f"{n} blocking tables cost {len(result.dropped)} drops; the "
+            f"one-pass clearing has regressed to the retry loop"
+        )
 
 
 def test_both_specs_ship_the_repair_script():
@@ -238,19 +335,3 @@ def test_both_specs_ship_the_repair_script():
     ):
         src = (root / spec).read_text(encoding="utf-8")
         assert "repair-schema.py" in src, f"{spec} does not ship the repair script"
-
-
-def test_the_frozen_path_is_preferred_when_it_exists(tmp_path, monkeypatch):
-    """A bundle resolves to its own copy, not to a repo path that will not be
-    there on an installed machine."""
-    import sys
-
-    from app.services import schema_repair
-
-    fake = tmp_path / "scripts"
-    fake.mkdir()
-    (fake / "repair-schema.py").write_text("# bundled copy\n")
-    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
-
-    got = schema_repair.repair_script_path()
-    assert got == str(fake / "repair-schema.py")

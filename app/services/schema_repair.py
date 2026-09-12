@@ -40,8 +40,10 @@ _ALREADY_EXISTS = re.compile(
     r'(?:table|relation)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s+already exists', re.I
 )
 
-# One drop per pending revision is already generous; this only bounds a
-# pathological loop, it is not an expected number.
+# A net, not the mechanism. `repair()` clears the known blockers in one pass
+# first, so this loop should normally run once. It used to BE the mechanism,
+# and cost 2**N - 1 rounds because each retry re-ran the migration from the
+# start and SQLite recreated what the previous round had dropped.
 MAX_ROUNDS = 25
 
 
@@ -54,28 +56,25 @@ class RepairResult:
     message: str = ""
 
 
-def repair_script_path() -> str:
-    """Where `repair-schema.py` actually is on this install.
+def repair_command() -> str:
+    """The command that actually works on THIS install.
 
-    A frozen bundle puts data files under `sys._MEIPASS`, so the script lives
-    at `_internal/scripts/repair-schema.py` rather than at `scripts/` — and
-    the startup refusal that names it is read mostly by Server Edition
-    operators, who may only have the bundle (#144). Falls back to the
-    repo-relative path, which is right for a checkout and is also the least
-    misleading thing to print if the file is missing entirely.
+    Frozen, there is no interpreter to run a bundled script with and
+    `app.services` is not importable from disk — so the remedy is the
+    launcher's own hidden flag, which runs inside the frozen runtime. From a
+    checkout, the script is the plain thing to say.
+
+    2.12.1 named a bundled script and both QA agents found nothing on the
+    machine could execute it. Naming a path that EXISTS is not the same as
+    naming an instruction that RUNS, and the test asserts the second now.
     """
     import sys
 
-    base = getattr(sys, "_MEIPASS", None)
-    if base:
-        bundled = Path(base) / "scripts" / "repair-schema.py"
-        if bundled.exists():
-            return str(bundled)
-    return str(
-        (ROOT / "scripts" / "repair-schema.py").resolve()
-        if (ROOT / "scripts" / "repair-schema.py").exists()
-        else "scripts/repair-schema.py"
-    )
+    if getattr(sys, "frozen", False):
+        exe = Path(sys.executable).name
+        return f"{exe} --_repair-schema"
+    script = ROOT / "scripts" / "repair-schema.py"
+    return f"python3 {script if script.exists() else 'scripts/repair-schema.py'}"
 
 
 def _alembic_cfg(url: str):
@@ -112,6 +111,43 @@ def repair(url: str, dry_run: bool = False) -> RepairResult:
     try:
         started = _current_revision(engine)
         result = RepairResult(ok=False, started_at=started, now_at=started)
+
+        # Clear everything in the way in ONE pass, before running anything.
+        #
+        # @skytech measured the retry loop and it is 2**N - 1 drops, not N:
+        # each round re-runs the migration from the start and SQLite DDL is
+        # not transactional, so the tables dropped in earlier rounds are
+        # recreated before the next failure. Today's three-table revision
+        # burns seven rounds of twenty-five; a five-table revision needs
+        # thirty-one and the tool gives up — after dropping tables, and
+        # re-running will not converge because it restarts the same doubling.
+        #
+        # The pending revisions already tell us which tables they will create.
+        # Drop the ones that are present and empty, once, and the upgrade then
+        # runs straight through. The loop below stays as a net for anything
+        # this pass does not foresee.
+        if started and not dry_run:
+            try:
+                pending = tables_pending_revisions_would_create(url, started)
+                present = set(inspect(engine).get_table_names())
+                for table in sorted(pending & present):
+                    rows = _row_count(engine, table)
+                    if rows:
+                        result.message = (
+                            f"refusing to repair: '{table}' is in the way of "
+                            f"the upgrade but holds {rows} row(s), so it was "
+                            f"not left behind by create_all. This needs a "
+                            f"person."
+                        )
+                        return result
+                    logger.warning("schema repair: dropping empty table %s", table)
+                    with engine.begin() as conn:
+                        conn.execute(text(f'DROP TABLE "{table}"'))
+                    result.dropped.append(table)
+            except Exception:
+                # The retry loop can still get there; do not fail the repair
+                # because the shortcut could not read the migration scripts.
+                logger.exception("could not pre-clear blocking tables")
 
         for _ in range(MAX_ROUNDS):
             try:

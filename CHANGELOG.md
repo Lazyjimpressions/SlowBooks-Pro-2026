@@ -34,13 +34,31 @@ an operator should find out instead. And this is its own endpoint rather than
 an option on the send preview, because widening a request model that a
 sending route shares is how a surface grows a capability nobody audited.
 
-**The refusal to open an older company file now names a script that exists.**
+**The refusal to open an older company file now names a command that runs.**
 Found by inspecting the published 2.12.0 artifact rather than the source: the
 message named `scripts/repair-schema.py`, and that file was not in the
 installed application. Files are bundled selectively, and the repair script
 was not among them — so the operator most likely to read that message was the
-one least likely to have the file. It ships now, on both platforms, and the
-message resolves the path that exists on the machine it is printed on.
+one least likely to have the file. It ships now on both platforms — and,
+more to the point, an installed application is told to use its own
+`--_repair-schema` option rather than a separate Python command it has no way
+to run. Both QA agents found the first attempt at this: the file was in the
+bundle and nothing on the machine could execute it, because the program code
+lives inside the executable rather than beside it.
+
+That was the fourth time one mistake has appeared in this product — an error
+telling somebody to do something they cannot do. The test that was supposed
+to close it checked that the named file existed, which is exactly the check
+that passes while the instruction still fails. It now takes the command out
+of the message and runs it.
+
+**Repairing a damaged file no longer gets slower the more tables are
+involved.** Each attempt restarted the whole upgrade, so the work doubled
+with every table in the way: three tables took seven passes, and five would
+have exceeded the limit and given up. Everything blocking is now cleared in
+one pass, so the cost is one step per table. Measured by the Windows QA
+agent, who noticed the comment in the code claimed one pass per table and the
+behaviour did not.
 
 **You can see a template edit before you save it.** Editing `invoice_email`
 under Settings -> Email Templates still meant saving over a working template
