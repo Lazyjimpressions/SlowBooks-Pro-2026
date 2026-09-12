@@ -102,9 +102,9 @@ company is an ordinary SQLite file under
 backups, uploads, and `launcher.log` live under the same `data` directory and
 remain outside the app bundle during upgrades.
 
-This path has the same single-user tradeoffs as the Windows desktop app. Intel
-Macs should use Docker or the developer-oriented native install below until a
-separately tested Intel build is available.
+This path has the same single-user tradeoffs as the Windows desktop app. The
+app is built for Apple Silicon only; Intel Macs use Docker or the
+developer-oriented native install below.
 
 ---
 
