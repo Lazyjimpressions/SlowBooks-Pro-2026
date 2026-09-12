@@ -42,6 +42,21 @@ def test_preview_says_something_before_the_fetch_and_takes_the_button_away():
     )
 
 
-def test_the_import_button_is_one_click_one_import():
+def test_the_import_button_is_one_click_one_import_on_every_engine():
+    """The first cut found the button through document.activeElement, and
+    WebKit does not focus a button on click — the guard was inert on macOS
+    (@macbase1, with a real click). The button comes in from its own
+    onclick now, and a failed import hands it back."""
+    assert re.search(
+        r'onclick="BankingPage\.confirmOFXImport\(\$\{feedId\}, \$\{accountId\}, this\)"',
+        JS,
+    )
     body = _handler("confirmOFXImport")
+    assert (
+        "= document.activeElement" not in body
+    )  # the comment may say the word; the code may not use it
     assert body.index("importBtn.disabled = true") < body.index("await fetch(")
+    assert (
+        "finally" in body
+        and "importBtn.disabled = false" in body.split("finally", 1)[1]
+    )

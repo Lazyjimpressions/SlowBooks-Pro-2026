@@ -751,7 +751,7 @@ const BankingPage = {
                     <tbody>${rows}</tbody>
                 </table></div>
                 <div class="form-actions" style="margin-top:12px;">
-                    <button class="btn btn-primary" onclick="BankingPage.confirmOFXImport(${feedId}, ${accountId})">Import ${data.transactions.length} Transactions</button>
+                    <button class="btn btn-primary" onclick="BankingPage.confirmOFXImport(${feedId}, ${accountId}, this)">Import ${data.transactions.length} Transactions</button>
                 </div>`;
         } catch (err) {
             $('#ofx-preview').innerHTML = `<div style="color:var(--danger); font-size:11px;">${escapeHtml(err.message)}</div>`;
@@ -760,9 +760,13 @@ const BankingPage = {
         }
     },
 
-    async confirmOFXImport(feedId, accountId) {
-        // Same guard on the import itself: one click, one import.
-        const importBtn = document.activeElement && document.activeElement.tagName === 'BUTTON' ? document.activeElement : null;
+    async confirmOFXImport(feedId, accountId, importBtn) {
+        // Same guard on the import itself: one click, one import. The
+        // button comes in from its own onclick (`this`) — the first cut
+        // found it through document.activeElement, and WebKit does not
+        // focus a button on click, so on macOS the guard never engaged
+        // (@macbase1, 2.13.0 gate, with a real click in a real WKWebView).
+        const label = importBtn ? importBtn.textContent : '';
         if (importBtn) { importBtn.disabled = true; importBtn.textContent = 'Importing…'; }
         try {
             const file = $('#ofx-file').files[0];
@@ -778,6 +782,11 @@ const BankingPage = {
             toast(`Imported ${data.imported} (${data.skipped} duplicates skipped, ${data.matched || 0} matched to the books)`);
             closeModal();
             App.navigate(`#/banking/${accountId}`);
-        } catch (err) { toast(err.message, 'error'); }
+        } catch (err) {
+            toast(err.message, 'error');
+        } finally {
+            // A failed import hands the button back, on every engine.
+            if (importBtn) { importBtn.disabled = false; importBtn.textContent = label; }
+        }
     },
 };
